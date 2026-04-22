@@ -1,45 +1,22 @@
-# Foco — extensão Google Chrome (Manifest V3)
+# Foco — extensão Chrome (Manifest V3)
 
-A extensão **Foco** bloqueia a navegação para os domínios que indicar numa **lista manual** e, se ativar, uma **lista +18** obtida de um ficheiro remoto em **HTTPS** (pode alojar o ficheiro em outro servidor, GitHub, etc.).
+Bloqueia **sítios que escolhe manualmente**. Ao abrir (ou embater num iframe) num desses sítios, a extensão mostra o ecrã **Foco** com a mensagem de que o endereço está bloqueado em vez de uma página vazia de “sem ligação”.
 
-## O que a extensão *não* promete
+## Com utilizar
 
-- Não bloqueia “toda a Internet de conteúdo +18” sem listas. A abordagem é: **regras baseadas em domínios** (`declarativeNetRequest`); a cobertura +18 depende da **qualidade e extensão da sua lista** e de um limite no Chrome.
-- O Chrome aplica, em conjunto, no máximo **5000 regras dinâmicas** por extensão (e outras regras que possa juntar). A lista **manual** tem **prioridade**: o que faltar fica fora, primeiro na parte +18 (ver mensagens nas opções se houver truncagem).
+1. Carregue a pasta do projeto em `chrome://extensions` (Modo de programador → Carregar sem empaquetamento).
+2. Clique no botão de extensão: ative o bloqueio, adicione sítio (+) ou abra a **lista completa e definições** para a lista geral, centralizada, com o nome do sítio, **Adicionar** e a lista com **Remover** em cada linha.
+3. Limite: **5000** regras (limite de regras dinâmicas do Chrome).
 
-## Instalação (modo programador)
+## Privacidade
 
-1. Abra o Chrome e vá a `chrome://extensions`.
-2. Ligue o **Modo de programador** (canto superior direito).
-3. Clique em **Carregar extensão sem empaquetamento** e escolha a pasta do projeto (onde está o ficheiro `manifest.json`).
+Só a sua lista fica no armazenamento local da extensão; ninguém envia os domínios a serviços nossos.
 
-## Utilização
+## Técnica
 
-1. Clique no ícone **Foco** e confirme que o **Bloqueio** está **ativo** (pode abrir as **Opções** para a lista e o URL +18).
-2. **Lista manual**: nas opções, um **domínio por linha**; pode colar `https://…` (só o _hostname_ é usado).
-3. **+18 (remoto)**:
-   - Ligue a opção correspondente.
-   - Defina o **URL HTTPS** de um ficheiro (texto ou JSON — ver formatos abaixo).
-   - A lista é atualizada de X em X horas (1 h a 7 d) e pode forçar **“Atualizar lista +18 agora”** nas opções.
-
-## Formatos da lista remota
-
-- **Texto**: um domínio por linha; comentários com `#` (ou início de linha estilo ficheiro `hosts` com `0.0.0.0` / `127.0.0.1`).
-- **JSON**: `["a.com", "b.com"]` ou `{ "domains": ["…"] }` (também `hosts` ou `block` com array de strings). Entradas `object` com `domain` são aceites.
-
-Ficheiro de exemplo na pasta: [`example-blocklist.txt`](example-blocklist.txt) (não use como lista real; serve só para testar o *parser* local).
-
-## Privacidade e rede
-
-- A extensão só **descarrega** a lista +18 do **URL que configurou**; não enviamos dados a servidores nossos. Respeite a licença e a legalidade das listas de terceiros.
-- A lista fica em **armazenamento local** da extensão (até um teto de entradas em cache para a parte +18, p.ex. 20000, para evitar ficheiros enormes; o bloqueio continua a respeitar o teto de **regras** do Chrome).
-
-## Tecnologias
-
-- [Manifest V3](https://developer.chrome.com/docs/extensions/mv3/)
-- [declarativeNetRequest](https://developer.chrome.com/docs/extensions/reference/declarativeNetRequest/)
-- `chrome.storage`, `chrome.alarms` e *service worker* `background.js`
+- `declarativeNetRequest` com ação `redirect` para a página [blocked.html](blocked.html) (apenas `main_frame` e `sub_frame` para não reencaminhar assets como imagens a torto e a direito).
+- A lista é guardada em `chrome.storage.local` e o *service worker* aplica a reconstrução de regras (com fila interna para evitar conflitos de `id`).
 
 ## Licença
 
-Use e modifique este projecto de acordo com a licença que o autor fixar. Listas e feeds remotos têm as suas licenças (respeite as fontes que usa).
+Use o projeto de acordo com a licença do autor, se a fixar.

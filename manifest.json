@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "Foco — bloqueio de sites",
-  "version": "1.0.0",
-  "description": "Bloqueia domínios à sua escolha e, opcionalmente, uma lista +18 a partir de um URL.",
-  "permissions": ["declarativeNetRequest", "storage", "alarms"],
+  "version": "2.0.0",
+  "description": "Bloqueie sites manualmente e mostre um ecrã do Foco ao tentar abri-los.",
+  "permissions": ["declarativeNetRequest", "storage"],
   "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "background.js"
@@ -24,5 +24,11 @@
     "32": "icons/icon32.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
-  }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["blocked.html", "blocked.css", "blocked.js"],
+      "matches": ["<all_urls>"]
+    }
+  ]
 }

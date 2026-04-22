@@ -7,61 +7,50 @@
     <link rel="stylesheet" href="options.css" />
   </head>
   <body>
-    <header>
-      <h1>Foco</h1>
-      <p class="lede">Bloqueia sites manualmente e, opcionalmente, uma lista remota (ex.: +18) que atualiza de um URL em HTTPS.</p>
-    </header>
+    <div class="page">
+      <div class="panel">
+        <header class="head">
+          <h1 class="logo">Foco</h1>
+          <p class="tagline">Bloqueie sítios e veja um aviso do Foco quando tentar aceder a um deles.</p>
+        </header>
 
-    <section>
-      <h2>Bloqueio geral</h2>
-      <label class="row check">
-        <input type="checkbox" id="blockingEnabled" />
-        <span>Extensão ativa (regras aplicadas no navegador)</span>
-      </label>
-    </section>
+        <section class="block card">
+          <h2 class="h2">Bloqueio</h2>
+          <label class="row-check">
+            <input type="checkbox" id="blockingEnabled" />
+            <span>Extensão ativa (bloquear conforme a lista abaixo)</span>
+          </label>
+        </section>
 
-    <section>
-      <h2>Lista manual de domínios</h2>
-      <p class="hint">Um domínio por linha. Pode colar o URL: o <em>hostname</em> é extraído. Ordem: bloquear primeiro estes, depois a lista +18 até ao limite do Chrome (5000 regras no total em conjunto). Se passar, os restantes ficam de fora; veja a mensagem abaixo após guardar.</p>
-      <textarea
-        id="userDomains"
-        rows="12"
-        placeholder="exemplo.com&#10;outro.com"
-        spellcheck="false"
-      ></textarea>
-    </section>
+        <section class="card add-block">
+          <h2 class="h2">Adicionar sítio</h2>
+          <p class="help">Indique o domínio (ex. <code>exemplo.com</code>) ou cole o URL completo — o nome do sítio é detetado sozinho.</p>
+          <form class="form-add" id="formAdd" autocomplete="off">
+            <input
+              type="text"
+              id="newSite"
+              class="in"
+              placeholder="ex. youtube.com"
+              spellcheck="false"
+              inputmode="url"
+              aria-label="Nome do sítio ou endereço"
+            />
+            <button type="submit" class="btn primary">Adicionar</button>
+          </form>
+        </section>
 
-    <section>
-      <h2>Lista +18 (remota)</h2>
-      <label class="row check">
-        <input type="checkbox" id="adult18Enabled" />
-        <span>Usar lista +18 a partir do URL (quando a extensão está ativa)</span>
-      </label>
-      <label for="adultListUrl" class="block-label">URL da lista (apenas <strong>https://</strong>)</label>
-      <input type="url" id="adultListUrl" class="url-input" placeholder="https://…/lista.txt" autocomplete="off" />
-      <label for="adultRefreshHours" class="block-label">Atualizar automaticamente a cada</label>
-      <select id="adultRefreshHours">
-        <option value="1">1 h</option>
-        <option value="6">6 h</option>
-        <option value="12">12 h</option>
-        <option value="24" selected>24 h</option>
-        <option value="48">48 h</option>
-        <option value="72">72 h</option>
-        <option value="168">7 dias</option>
-      </select>
-      <p class="hint">Formato aceite: ficheiro <strong>um domínio por linha</strong> (e comentários com <code>#</code>), ficheiro estilo <em>hosts</em> (ex.: <code>0.0.0.0 sitio.mau</code>) ou <strong>JSON</strong> com array de domínios ou com <code>domains</code> / <code>hosts</code> / <code>block</code>. Listas de terceiros podem ter <strong>falsos positivos ou negativos</strong>.</p>
-    </section>
+        <section class="card list-block" id="listBlock">
+          <h2 class="h2">Sites bloqueados <span class="count" id="listCount" aria-hidden="true">(0)</span></h2>
+          <p class="empty" id="emptyList">Ainda não há sítios na lista. Adicione um acima.</p>
+          <ul class="list" id="listEl" role="list" hidden></ul>
+        </section>
 
-    <div class="actions">
-      <button type="button" id="saveBtn" class="primary">Guardar</button>
-      <button type="button" id="refreshAdultBtn">Atualizar lista +18 agora</button>
-    </div>
-    <p id="status" class="status" role="status" aria-live="polite"></p>
-    <div id="details" class="details" hidden>
-      <p><strong>Regras aplicadas na última reconstrução (aprox.):</strong> manual <span id="dUser">0</span>, +18 <span id="dAdult">0</span> (teto: <span id="dCap">5000</span>).</p>
-      <p id="truncMsg" class="warn" hidden></p>
-      <p id="adultUpdateLine" class="meta"></p>
-      <p id="adultErr" class="error" hidden></p>
+        <p class="status" id="status" role="status" aria-live="polite"></p>
+        <p class="foot-meta" id="footMeta" hidden>
+          <span id="ruleStat"></span> · Limite do Chrome: 5000 regras. Com mais entradas, a lista é truncada.
+        </p>
+        <p class="warn" id="truncWarn" hidden></p>
+      </div>
     </div>
     <script src="options.js"></script>
   </body>

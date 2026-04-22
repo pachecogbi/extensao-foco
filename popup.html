@@ -7,17 +7,19 @@
     <link rel="stylesheet" href="popup.css" />
   </head>
   <body>
-    <div class="card">
-      <h1 class="title">Foco</h1>
-      <p class="desc">Bloqueio de sites (manual e lista +18 remota).</p>
-      <label class="row">
+    <div class="page">
+      <h1 class="t">Foco</h1>
+      <p class="subt">Bloqueio de sítios</p>
+      <label class="chk">
         <input type="checkbox" id="blockingEnabled" />
-        <span>Bloqueio ativo</span>
+        <span>Extensão ativa</span>
       </label>
-      <p id="mini" class="meta" role="status"></p>
-      <div class="actions">
-        <button type="button" id="openOptions" class="primary">Opções</button>
-      </div>
+      <form class="row" id="formQ" autocomplete="off">
+        <input type="text" id="quick" class="in" placeholder="Sítio…" inputmode="url" aria-label="Sítio a bloquear" />
+        <button type="submit" class="btn p">+</button>
+      </form>
+      <p class="st" id="st"></p>
+      <button type="button" class="link" id="open">Lista completa e definições</button>
     </div>
     <script src="popup.js"></script>
   </body>

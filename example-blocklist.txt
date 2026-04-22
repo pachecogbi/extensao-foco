@@ -1,0 +1,5 @@
+# Ficheiro de exemplo — substitua por subdomínios/hosts reais a bloquear (teste).
+# Isto NÃO contém conteúdo ofensivo; é só o formato.
+0.0.0.0 subdominio-nao-desejado.com
+# ou linhas simples:
+# exemplo-de-linha-para-teste.com

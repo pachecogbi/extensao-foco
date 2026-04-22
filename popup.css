@@ -1,0 +1,73 @@
+:root {
+  --bg: #0f1520;
+  --card: #1a2332;
+  --text: #e6edf3;
+  --muted: #8b9cb3;
+  --accent: #5eb8d9;
+  font-synthesis: style weight;
+}
+body {
+  width: 280px;
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.45 system-ui, Segoe UI, Roboto, "Noto Sans", sans-serif;
+}
+.card {
+  padding: 12px 14px 14px;
+  background: var(--card);
+  border: 1px solid #2a3648;
+  border-radius: 8px;
+  margin: 6px;
+}
+.title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin: 0 0 0.2em;
+}
+.desc {
+  color: var(--muted);
+  font-size: 0.8rem;
+  margin: 0 0 0.6rem;
+  line-height: 1.35;
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0.35rem 0 0.2rem;
+  cursor: pointer;
+  font-size: 0.88rem;
+}
+.row input {
+  margin: 0;
+  cursor: pointer;
+}
+.meta {
+  font-size: 0.75rem;
+  color: var(--muted);
+  min-height: 1.1em;
+  margin: 0.35rem 0 0.1rem;
+}
+.actions {
+  margin-top: 0.55rem;
+}
+button {
+  width: 100%;
+  font: inherit;
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid #2a3648;
+  background: #243044;
+  color: var(--text);
+  cursor: pointer;
+}
+button.primary {
+  background: #1e4a5c;
+  border-color: #2a6a82;
+  color: #e8f7fb;
+}
+button:hover {
+  filter: brightness(1.08);
+}

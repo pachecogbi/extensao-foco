@@ -204,9 +204,46 @@ body {
   color: #8a9a70;
   line-height: 1.35;
 }
-.pend-eta {
-  font: 0.7rem/1.2 ui-monospace, "Cascadia Code", "Consolas", monospace;
-  color: #b8c4a0;
+.list-hint {
+  font-size: 0.82rem;
+  color: #7d8a9a;
+  margin: 0.15rem 0 0.65rem;
+  line-height: 1.45;
+  padding: 0.4rem 0.45rem;
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 0.4rem;
+  border: 1px solid rgba(42, 53, 72, 0.6);
+}
+.list-hint strong {
+  color: #a8b6c8;
+  font-weight: 600;
+}
+.site-cooldown {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  margin-top: 0.35rem;
+  padding: 0.4rem 0.5rem;
+  background: rgba(30, 45, 55, 0.4);
+  border: 1px solid #2f4a58;
+  border-radius: 0.4rem;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.site-cooldown-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #6e8a9a;
+  font-weight: 600;
+}
+.site-cooldown-digits {
+  font: 600 1.15rem/1.1 ui-monospace, "Cascadia Code", "Consolas", monospace;
+  color: #c9d4a0;
+  letter-spacing: 0.08em;
+  font-variant-numeric: tabular-nums;
 }
 .btn-pend {
   font: inherit;

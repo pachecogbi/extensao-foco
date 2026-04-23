@@ -47,6 +47,52 @@ function sortArr(a) {
 }
 
 /**
+ * Chrome.storage pode devolver tempos de remoção como string; as chaves devem
+ * coincidir com o domínio em `userDomains` (já em minúsculas).
+ * @param {unknown} pr
+ * @returns {Record<string, number> | null}
+ */
+function parsePendingRemovals(pr) {
+  if (!pr || typeof pr !== "object" || Array.isArray(pr)) return null;
+  /** @type {Record<string, number>} */
+  const out = {};
+  for (const k of Object.keys(/** @type {Record<string, unknown>} */ (pr))) {
+    if (!k) continue;
+    const v = pr[k];
+    const n = typeof v === "number" ? v : Number(v);
+    if (Number.isFinite(n) && n > 0) {
+      out[k.toLowerCase()] = n;
+    }
+  }
+  return Object.keys(out).length > 0 ? out : null;
+}
+
+/**
+ * @param {Record<string, number> | null | undefined} m
+ * @param {string} host
+ */
+function removalEndAt(m, host) {
+  if (!m || !host) return null;
+  const h = host.toLowerCase();
+  if (h in m) {
+    const v = m[h];
+    if (typeof v === "number" && Number.isFinite(v)) return v;
+    if (v != null) {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    }
+  }
+  for (const k of Object.keys(m)) {
+    if (k.toLowerCase() === h) {
+      const v = m[k];
+      const n = typeof v === "number" ? v : Number(v);
+      return Number.isFinite(n) ? n : null;
+    }
+  }
+  return null;
+}
+
+/**
  * @param {number} ms
  */
 function formatRemainingMs(ms) {
@@ -61,7 +107,8 @@ function hasAnyPending() {
   if (pendingDisableAt && pendingDisableAt > Date.now()) return true;
   const m = pendingRemovals || {};
   for (const t of Object.values(m)) {
-    if (typeof t === "number" && t > Date.now()) return true;
+    const n = typeof t === "number" ? t : Number(t);
+    if (Number.isFinite(n) && n > Date.now()) return true;
   }
   return false;
 }
@@ -85,23 +132,26 @@ function startTick() {
 
 function updatePendingUi() {
   const box = el("boxPendingDisable");
-  if (pendingDisableAt && typeof pendingDisableAt === "number" && pendingDisableAt > Date.now()) {
-    box.hidden = false;
-    const left = pendingDisableAt - Date.now();
-    el("disableCountdown").textContent = formatRemainingMs(left);
-  } else {
-    box.hidden = true;
+  const cDown = el("disableCountdown");
+  if (box) {
+    if (pendingDisableAt && typeof pendingDisableAt === "number" && pendingDisableAt > Date.now()) {
+      box.hidden = false;
+      if (cDown) cDown.textContent = formatRemainingMs(pendingDisableAt - Date.now());
+    } else {
+      box.hidden = true;
+    }
   }
 
   const m = pendingRemovals || {};
-  for (const d of domains) {
-    const c = document.getElementById("rem-eta-" + d.replace(/[^a-z0-9.-]/gi, "_"));
-    if (!c) continue;
-    const when = m[d];
-    if (when && when > Date.now()) {
-      c.textContent = "Aplica em " + formatRemainingMs(when - Date.now());
+  const now = Date.now();
+  document.querySelectorAll("[data-rem-eta-for]").forEach((node) => {
+    const h = node.getAttribute("data-rem-eta-for");
+    if (!h) return;
+    const when = removalEndAt(m, h);
+    if (when && when > now) {
+      node.textContent = formatRemainingMs(when - now);
     }
-  }
+  });
 }
 
 function setStatus(msg, ok = true) {
@@ -110,10 +160,18 @@ function setStatus(msg, ok = true) {
   s.style.color = ok ? "var(--ok, #7dcea0)" : "var(--err, #f0a0a0)";
 }
 
-async function reschedule() {
-  await new Promise((resolve) => {
-    chrome.runtime.sendMessage({ type: "reschedulePending" }, () => resolve());
-  });
+/**
+ * Avisa o service worker para o alarme; nunca bloqueia a UI. Se a mensagem falhar (SW inativo, etc.),
+ * o contador e o storage em `local` já estão alinhados após `load()`.
+ */
+function fireReschedule() {
+  try {
+    chrome.runtime.sendMessage({ type: "reschedulePending" }, () => {
+      void chrome.runtime.lastError;
+    });
+  } catch {
+    // extensão recarregou ou contexto inválido
+  }
 }
 
 function render() {
@@ -123,6 +181,8 @@ function render() {
   c.textContent = "(" + domains.length + ")";
   u.innerHTML = "";
   const m = pendingRemovals || {};
+  const remHint = el("listRemHint");
+  if (remHint) remHint.hidden = domains.length === 0;
   if (domains.length === 0) {
     empty.hidden = false;
     u.hidden = true;
@@ -138,24 +198,29 @@ function render() {
       sp.className = "dname";
       sp.textContent = d;
       wrap.appendChild(sp);
-      const scheduled = typeof m[d] === "number" && m[d] > Date.now();
+      const endAt = removalEndAt(m, d);
+      const now = Date.now();
+      const scheduled = endAt != null && endAt > now;
       if (scheduled) {
         const p = document.createElement("p");
         p.className = "pend-note";
-        p.appendChild(
-          (() => {
-            const t = document.createElement("span");
-            t.textContent =
-              "Repetir a decisão dá força à tua concentração. Se ainda tiveres a certeza, o sítio deixa de ser bloqueado a seguir. ";
-            return t;
-          })()
-        );
-        const eta = document.createElement("span");
-        eta.className = "pend-eta";
-        eta.id = "rem-eta-" + d.replace(/[^a-z0-9.-]/gi, "_");
-        eta.textContent = "Aplica em " + formatRemainingMs(m[d] - Date.now());
-        p.appendChild(eta);
+        p.textContent =
+          "Repetir a decisão dá força à tua concentração. Se ainda tiveres a certeza, o sítio deixa de ser desbloqueado a seguir — só este, no seu tempo.";
+        const rowTimer = document.createElement("div");
+        rowTimer.className = "site-cooldown";
+        rowTimer.setAttribute("role", "status");
+        rowTimer.setAttribute("aria-live", "off");
+        const tLabel = document.createElement("span");
+        tLabel.className = "site-cooldown-label";
+        tLabel.textContent = "Temporizador (apenas este sítio)";
+        const tVal = document.createElement("span");
+        tVal.className = "site-cooldown-digits";
+        tVal.setAttribute("data-rem-eta-for", d);
+        tVal.textContent = formatRemainingMs(endAt - now);
+        rowTimer.appendChild(tLabel);
+        rowTimer.appendChild(tVal);
         wrap.appendChild(p);
+        wrap.appendChild(rowTimer);
       }
       li.appendChild(wrap);
 
@@ -173,8 +238,8 @@ function render() {
         const b = document.createElement("button");
         b.type = "button";
         b.className = "btn-remove";
-        b.setAttribute("aria-label", "Agendar remoção de " + d);
-        b.textContent = "Remover";
+        b.setAttribute("aria-label", "Iniciar remoção de " + d + " (contador de 5 minutos, só para este sítio)");
+        b.textContent = "Remover (5 min.)";
         b.addEventListener("click", () => {
           void scheduleRemove(d);
         });
@@ -221,7 +286,7 @@ async function load() {
   const raw = d[S.userDomains];
   domains = sortArr(Array.isArray(raw) ? raw : []);
   pendingDisableAt = typeof d[K.pendingDisableAt] === "number" ? d[K.pendingDisableAt] : null;
-  pendingRemovals = d[K.pendingRemovals] && typeof d[K.pendingRemovals] === "object" ? d[K.pendingRemovals] : null;
+  pendingRemovals = parsePendingRemovals(d[K.pendingRemovals]);
   render();
   updatePendingUi();
   renderMeta(d);
@@ -237,31 +302,40 @@ async function persist() {
 }
 
 async function scheduleRemove(host) {
-  if (typeof pendingRemovals === "object" && pendingRemovals[host] && pendingRemovals[host] > Date.now()) {
+  const key = (host && String(host).toLowerCase()) || "";
+  const m = { ...(typeof pendingRemovals === "object" && pendingRemovals ? pendingRemovals : {}) };
+  const already = removalEndAt(m, key);
+  if (already != null && already > Date.now()) {
     setStatus("Já há remoção agendada — anule primeiro se quiseres alterar o pedido.", false);
     return;
   }
-  const m = { ...(typeof pendingRemovals === "object" && pendingRemovals ? pendingRemovals : {}) };
-  m[host] = Date.now() + COOLDOWN_MS;
-  setStatus("Remoção agendada. O sítio continua bloqueado durante o intervalo; podes anular a qualquer momento.", true);
+  m[key] = Date.now() + COOLDOWN_MS;
+  setStatus(
+    "5 min. a contar para este sítio — cada linha com o seu temporizador; podes anular. Continua bloqueado até o fim da contagem.",
+    true
+  );
   try {
     await chrome.storage.local.set({ [K.pendingRemovals]: m });
-    await reschedule();
     await load();
+    fireReschedule();
   } catch (e) {
     setStatus("Erro: " + (e && e.message), false);
   }
 }
 
 async function cancelRemoval(host) {
+  const key = (host && String(host).toLowerCase()) || "";
   const m = { ...(typeof pendingRemovals === "object" && pendingRemovals ? pendingRemovals : {}) };
-  delete m[host];
+  delete m[key];
+  for (const k of Object.keys(m)) {
+    if (k.toLowerCase() === key) delete m[k];
+  }
   const out = Object.keys(m).length ? m : null;
   setStatus("Remoção de " + host + " anulada. O sítio continua na lista de bloqueio.", true);
   try {
     await chrome.storage.local.set({ [K.pendingRemovals]: out });
-    await reschedule();
     await load();
+    fireReschedule();
   } catch (e) {
     setStatus("Erro: " + (e && e.message), false);
   }
@@ -306,8 +380,8 @@ el("cancelPendingDisable").addEventListener("click", () => {
     setStatus("Desativação anulada. A extensão mantém o bloqueio ativo.", true);
     try {
       await chrome.storage.local.set({ [K.pendingDisableAt]: null });
-      await reschedule();
       await load();
+      fireReschedule();
     } catch (e) {
       setStatus("Erro: " + (e && e.message), false);
     }
@@ -332,8 +406,8 @@ el("blockingEnabled").addEventListener("change", (e) => {
         const end = Date.now() + COOLDOWN_MS;
         await chrome.storage.local.set({ [K.pendingDisableAt]: end });
         input.checked = true;
-        await reschedule();
         await load();
+        fireReschedule();
       } catch (err) {
         setStatus("Erro: " + (err && err.message), false);
         input.checked = true;
@@ -355,8 +429,8 @@ el("blockingEnabled").addEventListener("change", (e) => {
 });
 
 async function scheduleNextAndLoad() {
-  await reschedule();
   await load();
+  fireReschedule();
   setStatus("Bloqueio ativado; qualquer desativação em espera foi limpa.", true);
 }
 

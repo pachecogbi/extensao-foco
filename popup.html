@@ -14,6 +14,13 @@
         <input type="checkbox" id="blockingEnabled" />
         <span>Extensão ativa</span>
       </label>
+      <div class="pend-box" id="boxPend" hidden>
+        <p class="pend-msg" id="pendEnc">
+          A resistir ao impulso ajuda o teu foco. A desativação só aplica após 5 minutos; podes anular abaixo.
+        </p>
+        <p class="pend-timer" id="pendTime" aria-live="polite">5:00</p>
+        <button type="button" class="pend-cancel" id="pendCancel">Anular desativação</button>
+      </div>
       <form class="row" id="formQ" autocomplete="off">
         <input type="text" id="quick" class="in" placeholder="Sítio…" inputmode="url" aria-label="Sítio a bloquear" />
         <button type="submit" class="btn p">+</button>

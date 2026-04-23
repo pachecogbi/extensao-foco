@@ -158,6 +158,79 @@ body {
   color: #ecf6fa;
   border-color: #3a7a95;
 }
+.btn.wide {
+  width: 100%;
+  justify-content: center;
+  margin-top: 0.35rem;
+  background: #1a2835;
+  border-color: #3a4a5c;
+  color: #c8d6e4;
+  font-size: 0.85rem;
+  padding: 0.5rem 0.85rem;
+}
+.btn.wide:hover {
+  border-color: #5a7a90;
+  color: #e8f0f8;
+}
+.pending-cooldown {
+  border-color: #3d4a5a;
+  background: linear-gradient(180deg, #1a202a 0%, #161b26 100%);
+}
+.h2-pending {
+  color: #e0b86a;
+}
+.encouragement {
+  font-size: 0.86rem;
+  color: #9eb0c4;
+  margin: 0 0 0.5rem;
+  line-height: 1.5;
+}
+.countdown {
+  font: 600 1.4rem/1.2 ui-monospace, "Cascadia Code", "Consolas", monospace;
+  letter-spacing: 0.06em;
+  color: #e0c28a;
+  margin: 0.25rem 0 0.4rem;
+  text-align: center;
+}
+.dname-wrap {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.pend-note {
+  font-size: 0.75rem;
+  color: #8a9a70;
+  line-height: 1.35;
+}
+.pend-eta {
+  font: 0.7rem/1.2 ui-monospace, "Cascadia Code", "Consolas", monospace;
+  color: #b8c4a0;
+}
+.btn-pend {
+  font: inherit;
+  font-size: 0.75rem;
+  color: #a8c4e0;
+  background: #1a2a32;
+  border: 1px solid #2f4a58;
+  border-radius: 0.4rem;
+  padding: 0.3rem 0.5rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.btn-pend:hover {
+  background: #223844;
+  border-color: #4a6a80;
+}
+.li-btns {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
 .list-block .empty {
   font-size: 0.9rem;
   color: #6b7a8f;

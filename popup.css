@@ -38,6 +38,43 @@ body {
 .chk input {
   cursor: pointer;
 }
+.pend-box {
+  background: #121a24;
+  border: 1px solid #2a3d50;
+  border-radius: 0.45rem;
+  padding: 0.5rem 0.55rem 0.5rem;
+  margin: 0 0 0.5rem;
+}
+.pend-msg {
+  margin: 0;
+  font-size: 0.7rem;
+  line-height: 1.4;
+  color: #7d8a9a;
+  text-align: center;
+}
+.pend-timer {
+  margin: 0.3rem 0 0.35rem;
+  font: 600 0.95rem/1.2 ui-monospace, "Consolas", monospace;
+  color: #c9a86a;
+  text-align: center;
+  letter-spacing: 0.04em;
+}
+.pend-cancel {
+  display: block;
+  width: 100%;
+  font: inherit;
+  font-size: 0.75rem;
+  color: #a8c4e0;
+  background: #1a2a32;
+  border: 1px solid #2f4a58;
+  border-radius: 0.35rem;
+  padding: 0.38rem 0.45rem;
+  cursor: pointer;
+}
+.pend-cancel:hover {
+  background: #223844;
+  border-color: #4a6a80;
+}
 .row {
   display: flex;
   gap: 0.35rem;

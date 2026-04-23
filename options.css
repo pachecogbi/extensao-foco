@@ -59,6 +59,47 @@ body {
   color: var(--mute);
   line-height: 1.45;
 }
+.head-app {
+  position: relative;
+  padding: 0 0 0.1rem 0;
+  padding-right: 0;
+  margin-bottom: 0.25rem;
+  padding: 0 0.1rem 0.4rem;
+}
+.btn-gear {
+  position: absolute;
+  right: 0.15rem;
+  top: 0.15rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 0.45rem;
+  border: 1px solid #2f4058;
+  background: rgba(20, 28, 40, 0.85);
+  color: #9ab4cc;
+  text-decoration: none;
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+.btn-gear:hover {
+  color: #c8dcea;
+  border-color: #4a6a88;
+  background: #182230;
+}
+.ic-gear {
+  display: block;
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
 .h2 {
   font-size: 0.8rem;
   text-transform: uppercase;

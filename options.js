@@ -9,11 +9,10 @@ const K = {
   pendingRemovals: "pendingRemovals"
 };
 
-const COOLDOWN_MS = 5 * 60 * 1000;
-
 const el = (id) => document.getElementById(id);
 
 let domains = [];
+let cooldownMins = 5;
 /** @type {Record<string, number> | null} */
 let pendingRemovals = null;
 let pendingDisableAt = null;
@@ -182,7 +181,15 @@ function render() {
   u.innerHTML = "";
   const m = pendingRemovals || {};
   const remHint = el("listRemHint");
-  if (remHint) remHint.hidden = domains.length === 0;
+  if (remHint) {
+    remHint.hidden = domains.length === 0;
+    if (domains.length > 0) {
+      remHint.textContent =
+        "Ao tocar em «Remover (" +
+        cooldownMins +
+        " min.)», cada site inicia o seu temporizador nessa duração; contadores por linha, independentes; quando o de um site acaba, só esse é removido.";
+    }
+  }
   if (domains.length === 0) {
     empty.hidden = false;
     u.hidden = true;
@@ -205,14 +212,14 @@ function render() {
         const p = document.createElement("p");
         p.className = "pend-note";
         p.textContent =
-          "Repetir a decisão dá força à tua concentração. Se ainda tiveres a certeza, o sítio deixa de ser desbloqueado a seguir — só este, no seu tempo.";
+          "Repetir a decisão dá força à tua concentração. Se ainda tiveres a certeza, o site deixa de estar bloqueado a seguir — só este, no seu tempo.";
         const rowTimer = document.createElement("div");
         rowTimer.className = "site-cooldown";
         rowTimer.setAttribute("role", "status");
         rowTimer.setAttribute("aria-live", "off");
         const tLabel = document.createElement("span");
         tLabel.className = "site-cooldown-label";
-        tLabel.textContent = "Temporizador (apenas este sítio)";
+        tLabel.textContent = "Temporizador (apenas este site)";
         const tVal = document.createElement("span");
         tVal.className = "site-cooldown-digits";
         tVal.setAttribute("data-rem-eta-for", d);
@@ -238,8 +245,11 @@ function render() {
         const b = document.createElement("button");
         b.type = "button";
         b.className = "btn-remove";
-        b.setAttribute("aria-label", "Iniciar remoção de " + d + " (contador de 5 minutos, só para este sítio)");
-        b.textContent = "Remover (5 min.)";
+        b.setAttribute(
+          "aria-label",
+          "Iniciar remoção de " + d + " (aguarda " + cooldownMins + " minutos, só para este site)"
+        );
+        b.textContent = "Remover (" + cooldownMins + " min.)";
         b.addEventListener("click", () => {
           void scheduleRemove(d);
         });
@@ -265,7 +275,11 @@ function renderMeta(data) {
   }
   if (tr && tr.userMissed > 0) {
     w.textContent =
-      "Aviso: " + tr.userMissed + " sítio(s) não puderam ser bloqueados (limite de 5000 regras do Chrome).";
+      "Aviso: " +
+        (tr.userMissed === 1
+          ? "1 site não pôde ser bloqueado"
+          : tr.userMissed + " sites não puderam ser bloqueados") +
+        " (limite de 5000 regras do Chrome).";
     w.hidden = false;
   } else {
     w.textContent = "";
@@ -280,8 +294,10 @@ async function load() {
     S.lastRebuildStats,
     "listTruncated",
     K.pendingDisableAt,
-    K.pendingRemovals
+    K.pendingRemovals,
+    "pendingCooldownMinutes"
   ]);
+  cooldownMins = await focoGetPendingCooldownMinutes();
   el("blockingEnabled").checked = d[S.blockingEnabled] !== false;
   const raw = d[S.userDomains];
   domains = sortArr(Array.isArray(raw) ? raw : []);
@@ -309,9 +325,12 @@ async function scheduleRemove(host) {
     setStatus("Já há remoção agendada — anule primeiro se quiseres alterar o pedido.", false);
     return;
   }
-  m[key] = Date.now() + COOLDOWN_MS;
+  const mins = await focoGetPendingCooldownMinutes();
+  cooldownMins = mins;
+  m[key] = Date.now() + mins * 60 * 1000;
   setStatus(
-    "5 min. a contar para este sítio — cada linha com o seu temporizador; podes anular. Continua bloqueado até o fim da contagem.",
+    String(mins) +
+      " min. a contar para este site (o tempo vêm das configurações, ícone de engrenagem). Podes anular; o site fica bloqueado até ao fim.",
     true
   );
   try {
@@ -331,7 +350,7 @@ async function cancelRemoval(host) {
     if (k.toLowerCase() === key) delete m[k];
   }
   const out = Object.keys(m).length ? m : null;
-  setStatus("Remoção de " + host + " anulada. O sítio continua na lista de bloqueio.", true);
+  setStatus("Remoção de " + host + " anulada. O site continua na lista de bloqueio.", true);
   try {
     await chrome.storage.local.set({ [K.pendingRemovals]: out });
     await load();
@@ -353,11 +372,11 @@ async function addFromInput() {
     return;
   }
   if (domains.includes(h)) {
-    setStatus("Este sítio já está na lista.", false);
+    setStatus("Este site já está na lista.", false);
     return;
   }
   if (domains.length >= 5000) {
-    setStatus("Limite de 5000 sítios (limite de regras do Chrome).", false);
+    setStatus("Limite de 5000 sites (limite de regras do Chrome).", false);
     return;
   }
   el("newSite").value = "";
@@ -398,12 +417,15 @@ el("blockingEnabled").addEventListener("change", (e) => {
         input.checked = true;
         return;
       }
-      setStatus(
-        "A agendar desativação. O bloqueio mantém-se ativo 5 minutos; podes anular enquanto o contador correr.",
-        true
-      );
+      setStatus("A agendar desativação…", true);
       try {
-        const end = Date.now() + COOLDOWN_MS;
+        const mins = await focoGetPendingCooldownMinutes();
+        cooldownMins = mins;
+        setStatus(
+          "O bloqueio mantém-se ativo " + mins + " min.; podes anular a qualquer momento. (Tempo definido em Configurações.)",
+          true
+        );
+        const end = Date.now() + mins * 60 * 1000;
         await chrome.storage.local.set({ [K.pendingDisableAt]: end });
         input.checked = true;
         await load();
@@ -442,7 +464,8 @@ chrome.storage.onChanged.addListener((c, a) => {
       c[S.blockingEnabled] ||
       c.listTruncated ||
       c[K.pendingDisableAt] ||
-      c[K.pendingRemovals])
+      c[K.pendingRemovals] ||
+      c.pendingCooldownMinutes)
   ) {
     void load();
   }

@@ -8,26 +8,50 @@
   </head>
   <body>
     <div class="page">
-      <h1 class="t">Foco</h1>
-      <p class="subt">Bloqueio de sítios</p>
+      <div class="pop-head">
+        <div class="pop-titles">
+          <h1 class="t">Foco</h1>
+          <p class="subt">Bloqueio de sites</p>
+        </div>
+        <button
+          type="button"
+          class="btn-gear"
+          id="toSettings"
+          title="Mais definições (tempo de reflexão)"
+          aria-label="Mais definições"
+        >
+          <span class="visually-hidden">Configurações</span
+          ><svg
+            class="ic-gear"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+            focusable="false"
+          >
+            <path
+              fill="currentColor"
+              d="M19.14 12.94c.04-.3.06-.62.06-.94 0-.32-.02-.64-.06-.94l1.99-1.26c.18-.11.25-.32.19-.5-.4-1.1-.98-2.1-1.7-2.99-.12-.16-.32-.2-.5-.1l-2.36 1.1c-.52-.4-1.08-.73-1.69-.98L14.1 2.1c-.04-.19-.2-.32-.4-.32h-2.4c-.2 0-.36.13-.4.32L10.25 4.1c-.61.25-1.17.58-1.69.98L6.2 3.99c-.18-.09-.38-.06-.5.1-.72.9-1.3 1.9-1.7 2.99-.05.19 0 .39.19.5L6 8.5c-.04.3-.07.64-.07.95s.03.65.07.95L4.01 11.5c-.18.11-.24.32-.19.5.4 1.1.98 2.1 1.7 2.99.12.16.32.2.5.1l2.36-1.1c.52.4 1.08.74 1.7.99L9.5 20.1c.04.19.2.32.4.32h2.4c.2 0 .35-.13.4-.32l.39-1.1c.62-.25 1.18-.58 1.7-.99l2.36 1.1c.19.1.38.06.5-.1.72-.9 1.3-1.9 1.7-2.99.05-.19 0-.39-.19-.5L19.14 12.94zM12 15.5A3.5 3.5 0 1 1 15.5 12a3.5 3.5 0 0 1-3.5 3.5z"
+            /></svg>
+        </button>
+      </div>
       <label class="chk">
         <input type="checkbox" id="blockingEnabled" />
         <span>Extensão ativa</span>
       </label>
       <div class="pend-box" id="boxPend" hidden>
-        <p class="pend-msg" id="pendEnc">
-          A resistir ao impulso ajuda o teu foco. A desativação só aplica após 5 minutos; podes anular abaixo.
-        </p>
+        <p class="pend-msg" id="pendEnc">A desativação só aplica após o tempo de reflexão que definires em Configurações; podes anular abaixo.</p>
         <p class="pend-timer" id="pendTime" aria-live="polite">5:00</p>
         <button type="button" class="pend-cancel" id="pendCancel">Anular desativação</button>
       </div>
       <form class="row" id="formQ" autocomplete="off">
-        <input type="text" id="quick" class="in" placeholder="Sítio…" inputmode="url" aria-label="Sítio a bloquear" />
+        <input type="text" id="quick" class="in" placeholder="Site (domínio)…" inputmode="url" aria-label="Site a bloquear" />
         <button type="submit" class="btn p">+</button>
       </form>
       <p class="st" id="st"></p>
       <button type="button" class="link" id="open">Lista completa e definições</button>
     </div>
+    <script src="foco-cooldown.js"></script>
     <script src="popup.js"></script>
   </body>
 </html>

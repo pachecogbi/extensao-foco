@@ -1,9 +1,8 @@
 /** Teto de regras dinâmicas (Manifest V3 / Chromium). */
 const DNR_MAX_DYNAMIC_RULES = 5000;
 const REBUILD_DEBOUNCE_MS = 200;
-/** 5 minutos: tempo de reflexão antes de desativar a extensão ou retirar um sítio da lista. */
-const PENDING_COOLDOWN_MS = 5 * 60 * 1000;
 const ALARM_PENDING = "foco-apply-pending";
+const K_COOLDOWN_MIN = "pendingCooldownMinutes";
 
 const STORAGE = {
   blockingEnabled: "blockingEnabled",
@@ -136,7 +135,7 @@ function scheduleRebuild() {
 }
 
 /**
- * Aplica desligar extensão e/ou remoções de sítio cuja data já passou, depois regras DNR.
+ * Aplica desligar extensão e/ou remoções de site cuja data já passou, depois regras DNR.
  */
 async function processPendingIfDue() {
   const d = await chrome.storage.local.get([
@@ -216,7 +215,8 @@ chrome.runtime.onInstalled.addListener((details) => {
         [STORAGE.blockingEnabled]: true,
         [STORAGE.userDomains]: [],
         [K_PENDING_DISABLE_AT]: null,
-        [K_PENDING_REMOVALS]: null
+        [K_PENDING_REMOVALS]: null,
+        [K_COOLDOWN_MIN]: 5
       });
     }
     await processPendingIfDue();

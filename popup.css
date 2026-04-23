@@ -9,6 +9,67 @@ body {
 .page {
   padding: 0.9rem 0.85rem 0.8rem;
 }
+.pop-head {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.35rem;
+  margin: 0 0 0.2rem;
+}
+.pop-titles {
+  flex: 1;
+  min-width: 0;
+}
+.btn-gear {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.05rem;
+  height: 2.05rem;
+  border-radius: 0.4rem;
+  border: 1px solid #2a3d52;
+  background: #142028;
+  color: #7eb0d0;
+  cursor: pointer;
+  padding: 0;
+}
+.btn-gear:hover {
+  color: #a8d0ec;
+  border-color: #4a5f7a;
+  background: #1a2a32;
+}
+.ic-gear {
+  display: block;
+  pointer-events: none;
+}
+.pop-head .t {
+  text-align: left;
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #f2f5f8;
+}
+.pop-head .subt {
+  text-align: left;
+  margin: 0.1rem 0 0;
+  font-size: 0.72rem;
+  color: #6e7c92;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
 .t {
   margin: 0;
   font-size: 1.1rem;

@@ -5,7 +5,6 @@ const S = {
 };
 
 const K = { pendingDisableAt: "pendingDisableAt" };
-const COOLDOWN_MS = 5 * 60 * 1000;
 const $ = (id) => document.getElementById(id);
 
 let pendingDisableAt = null;
@@ -70,10 +69,14 @@ function setSt(msg, ok) {
   s.className = "st" + (ok === false ? " err" : "");
 }
 
-async function reschedule() {
-  await new Promise((r) => {
-    chrome.runtime.sendMessage({ type: "reschedulePending" }, () => r());
-  });
+function fireReschedule() {
+  try {
+    chrome.runtime.sendMessage({ type: "reschedulePending" }, () => {
+      void chrome.runtime.lastError;
+    });
+  } catch {
+    /* extensão recarregou */
+  }
 }
 
 function sortArr(a) {
@@ -87,6 +90,14 @@ async function refresh() {
     S.lastRebuildStats,
     K.pendingDisableAt
   ]);
+  const mins = await focoGetPendingCooldownMinutes();
+  const enc = $("pendEnc");
+  if (enc) {
+    enc.textContent =
+      "A resistir ao impulso ajuda o teu foco. A desativação só aplica após " +
+      mins +
+      " min. (o tempo podes ajustar na engrenagem, quando a extensão puder). Podes anular abaixo.";
+  }
   const blockOn = d[S.blockingEnabled] !== false;
   $("blockingEnabled").checked = blockOn;
   pendingDisableAt = typeof d[K.pendingDisableAt] === "number" ? d[K.pendingDisableAt] : null;
@@ -109,13 +120,16 @@ async function refresh() {
     if (showPend) {
       setSt("Bloqueio ainda ativo. Desativação: " + formatRemainingMs(pendingDisableAt - Date.now()) + ".", true);
     } else {
-      setSt("Lista: " + n + " sítio(s) — " + stats.applied + " regras ativas.", true);
+      setSt(
+        "Lista: " + n + (n === 1 ? " site — " : " sites — ") + stats.applied + " regras ativas.",
+        true
+      );
     }
   } else {
     if (showPend) {
       setSt("Bloqueio ainda ativo. Desativação: " + formatRemainingMs(pendingDisableAt - Date.now()) + ".", true);
     } else {
-      setSt("Lista: " + n + " sítio(s).", true);
+      setSt("Lista: " + n + (n === 1 ? " site." : " sites."), true);
     }
   }
 }
@@ -130,12 +144,15 @@ $("blockingEnabled").addEventListener("change", (e) => {
         input.checked = true;
         return;
       }
-      setSt("A agendar desativação (5 min). O bloqueio continua ativo; podes anular a qualquer momento.", true);
+      setSt("A agendar desativação… O bloqueio continua ativo; podes anular a qualquer momento.", true);
       try {
-        await chrome.storage.local.set({ [K.pendingDisableAt]: Date.now() + COOLDOWN_MS });
+        const ms = await focoGetPendingCooldownMs();
+        const mStr = (await focoGetPendingCooldownMinutes()) + " min";
+        setSt("Agendado. Tempo: " + mStr + " (vês na engrenagem). Podes anular a qualquer momento.", true);
+        await chrome.storage.local.set({ [K.pendingDisableAt]: Date.now() + ms });
         input.checked = true;
-        await reschedule();
         await refresh();
+        fireReschedule();
       } catch (er) {
         setSt("Erro: " + (er && er.message), false);
         input.checked = true;
@@ -148,8 +165,8 @@ $("blockingEnabled").addEventListener("change", (e) => {
       await new Promise((r) => {
         chrome.runtime.sendMessage({ type: "rebuild" }, () => r());
       });
-      await reschedule();
       await refresh();
+      fireReschedule();
       setSt("Bloqueio ativado.", true);
     } catch (e2) {
       setSt("Erro: " + (e2 && e2.message), false);
@@ -161,8 +178,8 @@ $("pendCancel").addEventListener("click", () => {
   void (async () => {
     try {
       await chrome.storage.local.set({ [K.pendingDisableAt]: null });
-      await reschedule();
       await refresh();
+      fireReschedule();
       setSt("Desativação anulada — extensão com bloqueio ativo.", true);
     } catch (e) {
       setSt("Erro: " + (e && e.message), false);
@@ -175,7 +192,7 @@ $("formQ").addEventListener("submit", async (e) => {
   const t = ($("quick").value || "").trim();
   $("quick").value = "";
   if (!t) {
-    setSt("Escreva o sítio.", false);
+    setSt("Escreva o site (domínio).", false);
     return;
   }
   const h = norm(t);
@@ -190,7 +207,7 @@ $("formQ").addEventListener("submit", async (e) => {
     return;
   }
   if (cur.length >= 5000) {
-    setSt("Limite de 5000 sítios.", false);
+    setSt("Limite de 5000 sites.", false);
     return;
   }
   cur.push(h);
@@ -209,11 +226,22 @@ $("open").addEventListener("click", () => {
   }
 });
 
+$("toSettings")?.addEventListener("click", () => {
+  const u = typeof chrome !== "undefined" && chrome.runtime?.getURL
+    ? chrome.runtime.getURL("settings.html")
+    : "settings.html";
+  if (window.open) {
+    window.open(u, "_blank", "noopener");
+  } else {
+    self.location.href = u;
+  }
+});
+
 void refresh();
 chrome.storage.onChanged.addListener((c, a) => {
   if (
     a === "local" &&
-    (c[S.userDomains] || c[S.lastRebuildStats] || c[S.blockingEnabled] || c[K.pendingDisableAt])
+    (c[S.userDomains] || c[S.lastRebuildStats] || c[S.blockingEnabled] || c[K.pendingDisableAt] || c.pendingCooldownMinutes)
   ) {
     void refresh();
   }

@@ -1,0 +1,70 @@
+.page-settings .head-row {
+  position: relative;
+  margin-bottom: 0.2rem;
+}
+.head.head-row {
+  text-align: center;
+}
+.back-link {
+  display: inline-block;
+  font-size: 0.8rem;
+  color: #7ba8c0;
+  text-decoration: none;
+  margin: 0 auto 0.4rem 0;
+  text-align: left;
+  width: 100%;
+  max-width: 20rem;
+}
+.back-link:hover {
+  color: #9ec8e0;
+  text-decoration: underline;
+}
+.set-block .set-help,
+.set-block .set-label {
+  font-size: 0.86rem;
+  color: var(--mute, #8a9ab0);
+  margin: 0 0 0.45rem;
+  line-height: 1.45;
+}
+.lock-hint {
+  font-size: 0.82rem;
+  color: #b8a878;
+  margin: 0 0 0.6rem;
+  line-height: 1.4;
+  padding: 0.4rem 0.5rem;
+  background: rgba(60, 50, 30, 0.35);
+  border: 1px solid rgba(120, 100, 60, 0.4);
+  border-radius: 0.45rem;
+  min-height: 1.2em;
+}
+.lock-hint:empty {
+  display: none;
+  margin: 0;
+  min-height: 0;
+  padding: 0;
+  border: none;
+}
+.set-form {
+  display: block;
+  margin: 0;
+}
+.set-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.2rem 0 0.35rem;
+}
+.set-num {
+  width: 5.5rem;
+  flex: 0 0 auto;
+}
+.set-label {
+  display: block;
+}
+.set-ok {
+  font-size: 0.88rem;
+  min-height: 1.1em;
+  margin: 0.35rem 0 0;
+  color: var(--ok, #7dcea0);
+}

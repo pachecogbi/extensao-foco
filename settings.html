@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="pt-PT">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Foco — configurações</title>
+    <link rel="stylesheet" href="options.css" />
+    <link rel="stylesheet" href="settings.css" />
+  </head>
+  <body>
+    <div class="page page-settings">
+      <div class="panel">
+        <header class="head head-row">
+          <a class="back-link" href="options.html" id="backOpt">← Lista e bloqueio</a>
+          <h1 class="logo">Configurações</h1>
+          <p class="tagline">Ajustes adicionais da extensão Foco (haverá mais opções no futuro).</p>
+        </header>
+
+        <section class="card set-block" id="cardTiming">
+          <h2 class="h2">Tempo de reflexão (desativar &amp; remover site)</h2>
+          <p class="set-help" id="helpTiming">
+            Tempo a aguardar entre o teu clique (desligar a extensão ou remover um <strong>site</strong> da lista) e a ação efetiva. Valor
+            padrão ao instalar: 5 minutos. Intervalo permitido: 1 a 180 min.
+          </p>
+          <p class="lock-hint" id="lockMsg" role="status"></p>
+          <form class="set-form" id="formTiming" autocomplete="off">
+            <label class="set-label" for="mins">Minutos</label>
+            <div class="set-row">
+              <input
+                type="number"
+                id="mins"
+                class="in set-num"
+                name="mins"
+                min="1"
+                max="180"
+                step="1"
+                inputmode="numeric"
+                required
+              />
+              <button type="submit" class="btn primary" id="saveMins" disabled>Guardar</button>
+            </div>
+            <p class="set-ok" id="setStatus" role="status" aria-live="off"></p>
+          </form>
+        </section>
+      </div>
+    </div>
+    <script src="foco-cooldown.js"></script>
+    <script src="settings.js"></script>
+  </body>
+</html>

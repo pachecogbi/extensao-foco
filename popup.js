@@ -1,16 +1,13 @@
 const S = {
   blockingEnabled: "blockingEnabled",
   userDomains: "userDomains",
-  lastRebuildStats: "lastRebuildStats",
-  tabLimitEnabled: "tabLimitEnabled",
-  tabLimitMax: "tabLimitMax"
+  lastRebuildStats: "lastRebuildStats"
 };
 
-const K = { pendingDisableAt: "pendingDisableAt", pendingTabLimitDisableAt: "pendingTabLimitDisableAt" };
+const K = { pendingDisableAt: "pendingDisableAt" };
 const $ = (id) => document.getElementById(id);
 
 let pendingDisableAt = null;
-let pendingTabLimitAt = null;
 let tick = null;
 
 function formatRemainingMs(ms) {
@@ -25,28 +22,14 @@ function hasPending() {
   return typeof pendingDisableAt === "number" && pendingDisableAt > Date.now();
 }
 
-function hasPendingTabLimit() {
-  return typeof pendingTabLimitAt === "number" && pendingTabLimitAt > Date.now();
-}
-
-/**
- * @param {unknown} n
- * @returns {number}
- */
-function clampTabMax(n) {
-  const x = typeof n === "number" ? n : parseInt(String(n), 10);
-  if (!Number.isFinite(x)) return 8;
-  return Math.max(2, Math.min(100, Math.floor(x)));
-}
-
 function startTick() {
   if (tick) {
     clearInterval(tick);
     tick = null;
   }
-  if (!hasPending() && !hasPendingTabLimit()) return;
+  if (!hasPending()) return;
   const step = () => {
-    if (!hasPending() && !hasPendingTabLimit()) {
+    if (!hasPending()) {
       if (tick) {
         clearInterval(tick);
         tick = null;
@@ -54,11 +37,8 @@ function startTick() {
       void refresh();
       return;
     }
-    if (hasPending() && $("pendTime")) {
+    if ($("pendTime")) {
       $("pendTime").textContent = formatRemainingMs(pendingDisableAt - Date.now());
-    }
-    if (hasPendingTabLimit() && $("pendTimeTab")) {
-      $("pendTimeTab").textContent = formatRemainingMs(pendingTabLimitAt - Date.now());
     }
   };
   step();
@@ -105,70 +85,61 @@ function sortArr(a) {
   return [...new Set(a)].filter(Boolean).sort((x, y) => x.localeCompare(y));
 }
 
+function renderDomainList(domains) {
+  const ul = $("domainList");
+  const empty = $("domainListEmpty");
+  if (!ul || !empty) return;
+  const list = Array.isArray(domains) ? sortArr(domains) : [];
+  ul.innerHTML = "";
+  for (const d of list) {
+    const li = document.createElement("li");
+    li.className = "list-pop-item";
+    li.textContent = d;
+    ul.appendChild(li);
+  }
+  const isEmpty = list.length === 0;
+  empty.hidden = !isEmpty;
+  ul.hidden = isEmpty;
+}
+
 async function refresh() {
   const d = await chrome.storage.local.get([
     S.blockingEnabled,
     S.userDomains,
     S.lastRebuildStats,
-    K.pendingDisableAt,
-    S.tabLimitEnabled,
-    S.tabLimitMax,
-    K.pendingTabLimitDisableAt
+    K.pendingDisableAt
   ]);
   const mins = await focoGetPendingCooldownMinutes();
   const enc = $("pendEnc");
   if (enc) {
-    enc.textContent =
-      "A resistir ao impulso ajuda o teu foco. A desativação só aplica após " +
-      mins +
-      " min. (o tempo podes ajustar na engrenagem, quando a extensão puder). Podes anular abaixo.";
+    enc.textContent = "A desativação aplica após " + mins + " min. (em Configurações). Podes anular abaixo.";
   }
   const blockOn = d[S.blockingEnabled] !== false;
   $("blockingEnabled").checked = blockOn;
   pendingDisableAt = typeof d[K.pendingDisableAt] === "number" ? d[K.pendingDisableAt] : null;
-  pendingTabLimitAt = typeof d[K.pendingTabLimitDisableAt] === "number" ? d[K.pendingTabLimitDisableAt] : null;
 
-  const tEnabled = d[S.tabLimitEnabled] === true;
-  if ($("tabLimitEnabled")) $("tabLimitEnabled").checked = tEnabled;
-  if ($("tabLimitMax")) $("tabLimitMax").value = String(clampTabMax(d[S.tabLimitMax] != null ? d[S.tabLimitMax] : 8));
-
-  const a = d[S.userDomains] || [];
-  const n = Array.isArray(a) ? a.length : 0;
-  const stats = d[S.lastRebuildStats];
+  const raw = d[S.userDomains] || [];
+  const rows = sortArr(Array.isArray(raw) ? raw : []);
+  const n = rows.length;
+  renderDomainList(rows);
 
   const showPend = hasPending();
-  const showPendTab = hasPendingTabLimit();
   if ($("boxPend")) $("boxPend").hidden = !showPend;
-  if ($("boxPendTab")) {
-    $("boxPendTab").hidden = !showPendTab;
-  }
   if (showPend) {
     if ($("pendTime")) $("pendTime").textContent = formatRemainingMs(pendingDisableAt - Date.now());
-  }
-  if (showPendTab) {
-    if ($("pendTimeTab")) $("pendTimeTab").textContent = formatRemainingMs(pendingTabLimitAt - Date.now());
-  }
-  if (showPend || showPendTab) {
     startTick();
   } else if (tick) {
     clearInterval(tick);
     tick = null;
   }
 
-  const tMax = clampTabMax(d[S.tabLimitMax] != null ? d[S.tabLimitMax] : 8);
-  const tabOn = tEnabled && !showPendTab;
-  const extra = tabOn ? " · Limite de abas: " + tMax + "." : "";
-
-  if (showPend && showPendTab) {
-    setSt("Desativação da extensão e do limite de abas a contar. Vê os contadores abaixo.", true);
-  } else if (showPend) {
-    setSt("Bloqueio ainda ativo. Desativação: " + formatRemainingMs(pendingDisableAt - Date.now()) + extra, true);
-  } else if (showPendTab) {
-    setSt("Limite de abas ainda ativo. Desativação: " + formatRemainingMs(pendingTabLimitAt - Date.now()) + ".", true);
+  const stats = d[S.lastRebuildStats];
+  if (showPend) {
+    setSt("Bloqueio ainda ativo. Desativação: " + formatRemainingMs(pendingDisableAt - Date.now()) + ".", true);
   } else if (stats && typeof stats.applied === "number") {
-    setSt("Lista: " + n + (n === 1 ? " site — " : " sites — ") + stats.applied + " regras ativas." + extra, true);
+    setSt("Lista: " + n + (n === 1 ? " site — " : " sites — ") + stats.applied + " regras.", true);
   } else {
-    setSt("Lista: " + n + (n === 1 ? " site." : " sites.") + extra, true);
+    setSt("Lista: " + n + (n === 1 ? " site." : " sites."), true);
   }
 }
 
@@ -178,15 +149,14 @@ $("blockingEnabled").addEventListener("change", (e) => {
   void (async () => {
     if (!input.checked) {
       if (hasPending()) {
-        setSt("Já há desativação agendada. Anula primeiro, se quiseres alterar.", false);
+        setSt("Já há desativação agendada. Anula primeiro.", false);
         input.checked = true;
         return;
       }
-      setSt("A agendar desativação… O bloqueio continua ativo; podes anular a qualquer momento.", true);
+      setSt("A agendar desativação… o bloqueio continua; podes anular.", true);
       try {
         const ms = await focoGetPendingCooldownMs();
-        const mStr = (await focoGetPendingCooldownMinutes()) + " min";
-        setSt("Agendado. Tempo: " + mStr + " (vês na engrenagem). Podes anular a qualquer momento.", true);
+        setSt("Agendado. Abre Configurações para ver o tempo de reflexão. Podes anular.", true);
         await chrome.storage.local.set({ [K.pendingDisableAt]: Date.now() + ms });
         input.checked = true;
         await refresh();
@@ -218,75 +188,7 @@ $("pendCancel").addEventListener("click", () => {
       await chrome.storage.local.set({ [K.pendingDisableAt]: null });
       await refresh();
       fireReschedule();
-      setSt("Desativação anulada — extensão com bloqueio ativo.", true);
-    } catch (e) {
-      setSt("Erro: " + (e && e.message), false);
-    }
-  })();
-});
-
-$("pendCancelTab")?.addEventListener("click", () => {
-  void (async () => {
-    try {
-      await chrome.storage.local.set({ [K.pendingTabLimitDisableAt]: null });
-      await refresh();
-      fireReschedule();
-      setSt("Desativação do limite de abas anulada; o limite continua ativo.", true);
-    } catch (e) {
-      setSt("Erro: " + (e && e.message), false);
-    }
-  })();
-});
-
-$("tabLimitEnabled")?.addEventListener("change", (e) => {
-  const input = e.target;
-  if (!input || input.type !== "checkbox") return;
-  void (async () => {
-    if (!input.checked) {
-      if (hasPendingTabLimit()) {
-        setSt("Já há desativação do limite de abas agendada. Anula primeiro, se quiseres alterar.", false);
-        input.checked = true;
-        return;
-      }
-      setSt("A agendar desativação do limite de abas… O limite continua ativo; podes anular a qualquer momento.", true);
-      try {
-        const ms = await focoGetPendingCooldownMs();
-        const mStr = (await focoGetPendingCooldownMinutes()) + " min";
-        setSt("Agendado. Tempo: " + mStr + ". Podes anular a qualquer momento.", true);
-        await chrome.storage.local.set({ [K.pendingTabLimitDisableAt]: Date.now() + ms });
-        input.checked = true;
-        await refresh();
-        fireReschedule();
-      } catch (er) {
-        setSt("Erro: " + (er && er.message), false);
-        input.checked = true;
-      }
-      return;
-    }
-    try {
-      await chrome.storage.local.set({
-        [K.pendingTabLimitDisableAt]: null,
-        [S.tabLimitEnabled]: true
-      });
-      input.checked = true;
-      await refresh();
-      fireReschedule();
-      setSt("Limite de abas ativado.", true);
-    } catch (e2) {
-      setSt("Erro: " + (e2 && e2.message), false);
-    }
-  })();
-});
-
-$("tabLimitMax")?.addEventListener("change", () => {
-  void (async () => {
-    const elM = $("tabLimitMax");
-    if (!elM) return;
-    const v = clampTabMax(elM.value);
-    elM.value = String(v);
-    try {
-      await chrome.storage.local.set({ [S.tabLimitMax]: v });
-      await refresh();
+      setSt("Desativação anulada — bloqueio ativo.", true);
     } catch (e) {
       setSt("Erro: " + (e && e.message), false);
     }
@@ -298,7 +200,7 @@ $("formQ").addEventListener("submit", async (e) => {
   const t = ($("quick").value || "").trim();
   $("quick").value = "";
   if (!t) {
-    setSt("Escreva o site (domínio).", false);
+    setSt("Escreva o domínio do site.", false);
     return;
   }
   const h = norm(t);
@@ -326,7 +228,7 @@ $("formQ").addEventListener("submit", async (e) => {
   await refresh();
 });
 
-$("open").addEventListener("click", () => {
+$("optPage")?.addEventListener("click", () => {
   if (chrome.runtime.openOptionsPage) {
     chrome.runtime.openOptionsPage();
   }
@@ -347,14 +249,7 @@ void refresh();
 chrome.storage.onChanged.addListener((c, a) => {
   if (
     a === "local" &&
-    (c[S.userDomains] ||
-      c[S.lastRebuildStats] ||
-      c[S.blockingEnabled] ||
-      c[K.pendingDisableAt] ||
-      c.pendingCooldownMinutes ||
-      c[S.tabLimitEnabled] ||
-      c[S.tabLimitMax] ||
-      c[K.pendingTabLimitDisableAt])
+    (c[S.userDomains] || c[S.lastRebuildStats] || c[S.blockingEnabled] || c[K.pendingDisableAt] || c.pendingCooldownMinutes)
   ) {
     void refresh();
   }

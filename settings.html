@@ -11,16 +11,16 @@
     <div class="page page-settings">
       <div class="panel">
         <header class="head head-row">
-          <a class="back-link" href="options.html" id="backOpt">← Lista e bloqueio</a>
+          <a class="back-link" href="options.html" id="backOpt">← Voltar</a>
           <h1 class="logo">Configurações</h1>
-          <p class="tagline">Ajustes adicionais da extensão Foco (haverá mais opções no futuro).</p>
+          <p class="tagline">Tempo de reflexão e limite de abas.</p>
         </header>
 
         <section class="card set-block" id="cardTiming">
-          <h2 class="h2">Tempo de reflexão (desativar &amp; remover site)</h2>
+          <h2 class="h2">Tempo de reflexão</h2>
           <p class="set-help" id="helpTiming">
-            Tempo a aguardar entre o teu clique (desligar a extensão ou remover um <strong>site</strong> da lista) e a ação efetiva. Valor
-            padrão ao instalar: 5 minutos. Intervalo permitido: 1 a 180 min.
+            Minutos a aguardar após o clique (desligar a extensão, remover site, ou as opções abaixo). 1 a 180 min. Valor
+            padrão: 5.
           </p>
           <p class="lock-hint" id="lockMsg" role="status"></p>
           <form class="set-form" id="formTiming" autocomplete="off">
@@ -41,6 +41,34 @@
             </div>
             <p class="set-ok" id="setStatus" role="status" aria-live="off"></p>
           </form>
+        </section>
+
+        <section class="card">
+          <h2 class="h2">Limite de abas</h2>
+          <p class="help set-help set-help-tight">Todas as janelas, máximo 2 a 100. Ao abrires a mais, fecha-se a nova; com excedente, cortam-se as abas mais recentes.</p>
+          <label class="row-check">
+            <input type="checkbox" id="tabLimitEnabled" />
+            <span>Ativar</span>
+          </label>
+          <div class="form-add" style="margin-top: 0.5rem">
+            <input
+              type="number"
+              id="tabLimitMax"
+              class="in"
+              min="2"
+              max="100"
+              step="1"
+              inputmode="numeric"
+              aria-label="Máximo de abas"
+            />
+            <button type="button" class="btn primary" id="saveTabMax">Aplicar</button>
+          </div>
+        </section>
+
+        <section class="card pending-cooldown" id="boxPendingTabLimit" hidden>
+          <h2 class="h2 h2-pending">A desligar: limite de abas</h2>
+          <p class="countdown" id="tabLimitCountdown" aria-live="polite">5:00</p>
+          <button type="button" class="btn wide" id="cancelPendingTabLimit">Anular (manter o limite)</button>
         </section>
       </div>
     </div>

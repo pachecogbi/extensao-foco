@@ -68,3 +68,11 @@
   margin: 0.35rem 0 0;
   color: var(--ok, #7dcea0);
 }
+.set-help-tight {
+  font-size: 0.8rem;
+  line-height: 1.4;
+  margin: 0 0 0.4rem;
+}
+.page-settings .help {
+  max-width: 32rem;
+}

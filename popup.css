@@ -214,6 +214,51 @@ body {
 .st.err {
   color: #e89a9a;
 }
+.pop-sec {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #6e7c92;
+  margin: 0.35rem 0 0.2rem;
+}
+.list-wrap {
+  min-height: 0;
+  margin: 0 0 0.4rem;
+}
+.list-pop {
+  list-style: none;
+  margin: 0;
+  padding: 0.25rem 0.3rem;
+  max-height: 5.2rem;
+  overflow-y: auto;
+  background: #0a1016;
+  border: 1px solid #1e2a3a;
+  border-radius: 0.4rem;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: #b8c4d0;
+}
+.list-pop-item {
+  padding: 0.12rem 0;
+  word-break: break-all;
+  border-bottom: 1px solid #151b24;
+}
+.list-pop-item:last-child {
+  border-bottom: none;
+}
+.list-empty {
+  font-size: 0.75rem;
+  color: #5a6578;
+  margin: 0.1rem 0 0.35rem;
+  text-align: center;
+  font-style: italic;
+}
+.foot-links {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin-top: 0.1rem;
+}
 .link {
   display: block;
   width: 100%;
@@ -229,4 +274,14 @@ body {
 .link:hover {
   color: #a0d0eb;
   border-color: #3a4f68;
+}
+.link-sec {
+  font-size: 0.72rem;
+  color: #6e8a9a;
+  border-color: #243140;
+  padding: 0.32rem 0.45rem;
+}
+.link-sec:hover {
+  color: #8eb0c0;
+  border-color: #334a58;
 }

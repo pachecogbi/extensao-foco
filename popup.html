@@ -17,8 +17,8 @@
           type="button"
           class="btn-gear"
           id="toSettings"
-          title="Mais definições (tempo de reflexão)"
-          aria-label="Mais definições"
+          title="Configurações"
+          aria-label="Configurações"
         >
           <span class="visually-hidden">Configurações</span
           ><svg
@@ -40,42 +40,25 @@
         <span>Extensão ativa</span>
       </label>
       <div class="pend-box" id="boxPend" hidden>
-        <p class="pend-msg" id="pendEnc">A desativação só aplica após o tempo de reflexão que definires em Configurações; podes anular abaixo.</p>
+        <p class="pend-msg" id="pendEnc">A desativação só aplica após o tempo de reflexão em Configurações. Podes anular abaixo.</p>
         <p class="pend-timer" id="pendTime" aria-live="polite">5:00</p>
         <button type="button" class="pend-cancel" id="pendCancel">Anular desativação</button>
       </div>
-      <div class="tab-lim">
-        <label class="chk chk-tab">
-          <input type="checkbox" id="tabLimitEnabled" />
-          <span>Limite de abas (todas as janelas)</span>
-        </label>
-        <div class="tab-lim-row">
-          <label class="tab-lim-lbl" for="tabLimitMax">Máximo de abas</label>
-          <input
-            type="number"
-            class="in in-tabmax"
-            id="tabLimitMax"
-            min="2"
-            max="100"
-            step="1"
-            inputmode="numeric"
-            aria-label="Máximo de abas"
-          />
-        </div>
+
+      <p class="pop-sec">Sites na lista</p>
+      <div class="list-wrap">
+        <ul class="list-pop" id="domainList" aria-label="Sites bloqueados"></ul>
+        <p class="list-empty" id="domainListEmpty" hidden>Lista vazia.</p>
       </div>
-      <div class="pend-box" id="boxPendTab" hidden>
-        <p class="pend-msg" id="pendEncTab">
-          O limite de abas continua ativo; a desativação só aplica após o tempo de reflexão. Podes anular abaixo.
-        </p>
-        <p class="pend-timer" id="pendTimeTab" aria-live="polite">5:00</p>
-        <button type="button" class="pend-cancel" id="pendCancelTab">Anular desativação do limite de abas</button>
-      </div>
+
       <form class="row" id="formQ" autocomplete="off">
-        <input type="text" id="quick" class="in" placeholder="Site (domínio)…" inputmode="url" aria-label="Site a bloquear" />
-        <button type="submit" class="btn p">+</button>
+        <input type="text" id="quick" class="in" placeholder="Adicionar site (domínio)…" inputmode="url" aria-label="Domínio a bloquear" />
+        <button type="submit" class="btn p" title="Adicionar">+</button>
       </form>
       <p class="st" id="st"></p>
-      <button type="button" class="link" id="open">Lista completa e definições</button>
+      <div class="foot-links">
+        <button type="button" class="link link-sec" id="optPage">Remover com temporizador…</button>
+      </div>
     </div>
     <script src="foco-cooldown.js"></script>
     <script src="popup.js"></script>

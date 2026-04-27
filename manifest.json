@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Foco — bloqueio de sites",
-  "version": "2.6.0",
-  "description": "Bloqueie sites manualmente e mostre um ecrã do Foco ao tentar abri-los.",
+  "version": "2.7.0",
+  "description": "Bloqueie sites manualmente e, opcionalmente, defina minutos de uso diários (por site) com bloqueio até ao dia seguinte.",
   "permissions": ["declarativeNetRequest", "storage", "alarms", "tabs"],
   "host_permissions": ["<all_urls>"],
   "background": {

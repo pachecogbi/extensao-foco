@@ -13,6 +13,9 @@ function lockText(g) {
   if (g.reason === "removalTimers") {
     return "Há remoção(ões) de site a contar. Anula ou aguarda o fim, mantém tudo inactivo e sem temporizadores, e aí podes editar o tempo de reflexão.";
   }
+  if (g.reason === "tabLimitTimer") {
+    return "Há desativação do limite de abas a contar. Anula no popup ou definições, ou aguarda o fim; a extensão inactiva e sem temporizadores, e aí podes editar o tempo de reflexão.";
+  }
   return "Não é possível editar o tempo neste momento.";
 }
 
@@ -76,7 +79,8 @@ chrome.storage.onChanged.addListener((c, a) => {
       c.blockingEnabled ||
       c.pendingDisableAt ||
       c.pendingRemovals ||
-      c.pendingCooldownMinutes
+      c.pendingCooldownMinutes ||
+      c.pendingTabLimitDisableAt
     ) {
       void refresh();
     }

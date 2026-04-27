@@ -99,6 +99,37 @@ body {
 .chk input {
   cursor: pointer;
 }
+.tab-lim {
+  margin: 0 0 0.45rem;
+  padding: 0.45rem 0.4rem 0.5rem;
+  border: 1px solid #1e2a3a;
+  border-radius: 0.4rem;
+  background: #0c1218;
+}
+.chk-tab {
+  margin: 0 0 0.4rem;
+  justify-content: flex-start;
+  text-align: left;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+.tab-lim-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding-left: 0.1rem;
+}
+.tab-lim-lbl {
+  font-size: 0.72rem;
+  color: #7d8a9a;
+  white-space: nowrap;
+}
+.in-tabmax {
+  width: 3.2rem;
+  text-align: center;
+  padding: 0.32rem 0.35rem;
+  font-size: 0.8rem;
+}
 .pend-box {
   background: #121a24;
   border: 1px solid #2a3d50;

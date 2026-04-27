@@ -44,6 +44,32 @@
         <p class="pend-timer" id="pendTime" aria-live="polite">5:00</p>
         <button type="button" class="pend-cancel" id="pendCancel">Anular desativação</button>
       </div>
+      <div class="tab-lim">
+        <label class="chk chk-tab">
+          <input type="checkbox" id="tabLimitEnabled" />
+          <span>Limite de abas (todas as janelas)</span>
+        </label>
+        <div class="tab-lim-row">
+          <label class="tab-lim-lbl" for="tabLimitMax">Máximo de abas</label>
+          <input
+            type="number"
+            class="in in-tabmax"
+            id="tabLimitMax"
+            min="2"
+            max="100"
+            step="1"
+            inputmode="numeric"
+            aria-label="Máximo de abas"
+          />
+        </div>
+      </div>
+      <div class="pend-box" id="boxPendTab" hidden>
+        <p class="pend-msg" id="pendEncTab">
+          O limite de abas continua ativo; a desativação só aplica após o tempo de reflexão. Podes anular abaixo.
+        </p>
+        <p class="pend-timer" id="pendTimeTab" aria-live="polite">5:00</p>
+        <button type="button" class="pend-cancel" id="pendCancelTab">Anular desativação do limite de abas</button>
+      </div>
       <form class="row" id="formQ" autocomplete="off">
         <input type="text" id="quick" class="in" placeholder="Site (domínio)…" inputmode="url" aria-label="Site a bloquear" />
         <button type="submit" class="btn p">+</button>

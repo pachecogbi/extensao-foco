@@ -14,8 +14,67 @@ const STORAGE = {
 const K_PENDING_DISABLE_AT = "pendingDisableAt";
 /** { "domínio": epochMsFim } — remoção aplica nessa hora. */
 const K_PENDING_REMOVALS = "pendingRemovals";
+const K_TAB_LIMIT_ENABLED = "tabLimitEnabled";
+const K_TAB_LIMIT_MAX = "tabLimitMax";
+const K_PENDING_TAB_LIMIT_DISABLE_AT = "pendingTabLimitDisableAt";
+
+const LIM_TABS_MIN = 2;
+const LIM_TABS_MAX_CAP = 100;
 
 const RES_TYPES = Object.freeze(["main_frame", "sub_frame"]);
+
+/**
+ * @param {unknown} n
+ * @returns {number}
+ */
+function clampTabLimitCount(n) {
+  const x = typeof n === "number" ? n : parseInt(String(n), 10);
+  if (!Number.isFinite(x)) return 8;
+  return Math.max(LIM_TABS_MIN, Math.min(LIM_TABS_MAX_CAP, Math.floor(x)));
+}
+
+/**
+ * Garante que o número de abas (em todas as janelas) não excede o limite. Remove as abas abertas mais recentemente.
+ * @returns {Promise<void>}
+ */
+async function enforceTabLimitFromStorage() {
+  const s = await chrome.storage.local.get([K_TAB_LIMIT_ENABLED, K_TAB_LIMIT_MAX]);
+  if (s[K_TAB_LIMIT_ENABLED] !== true) return;
+  const max = clampTabLimitCount(s[K_TAB_LIMIT_MAX]);
+  const tabs = await chrome.tabs.query({});
+  if (tabs.length <= max) return;
+  const byNewest = [...tabs].sort((a, b) => (b.id || 0) - (a.id || 0));
+  for (const t of byNewest.slice(0, tabs.length - max)) {
+    if (t.id == null) continue;
+    try {
+      await chrome.tabs.remove(t.id);
+    } catch {
+      /* aba já fechada */
+    }
+  }
+}
+
+/**
+ * @param {chrome.tabs.Tab} tab
+ */
+function onTabCreatedForTabLimit(tab) {
+  if (!tab || tab.id == null) return;
+  void (async () => {
+    const s = await chrome.storage.local.get([K_TAB_LIMIT_ENABLED, K_TAB_LIMIT_MAX]);
+    if (s[K_TAB_LIMIT_ENABLED] !== true) return;
+    const max = clampTabLimitCount(s[K_TAB_LIMIT_MAX]);
+    const all = await chrome.tabs.query({});
+    if (all.length > max) {
+      try {
+        await chrome.tabs.remove(tab.id);
+      } catch {
+        /* ignorar */
+      }
+    }
+  })();
+}
+
+chrome.tabs.onCreated.addListener(onTabCreatedForTabLimit);
 
 let rebuildTimer = null;
 let rebuildDnrQueue = Promise.resolve();
@@ -142,13 +201,22 @@ async function processPendingIfDue() {
     STORAGE.blockingEnabled,
     STORAGE.userDomains,
     K_PENDING_DISABLE_AT,
-    K_PENDING_REMOVALS
+    K_PENDING_REMOVALS,
+    K_PENDING_TAB_LIMIT_DISABLE_AT
   ]);
   const now = Date.now();
   const patch = {};
   if (d[K_PENDING_DISABLE_AT] && typeof d[K_PENDING_DISABLE_AT] === "number" && d[K_PENDING_DISABLE_AT] <= now) {
     patch[STORAGE.blockingEnabled] = false;
     patch[K_PENDING_DISABLE_AT] = null;
+  }
+  if (
+    d[K_PENDING_TAB_LIMIT_DISABLE_AT] &&
+    typeof d[K_PENDING_TAB_LIMIT_DISABLE_AT] === "number" &&
+    d[K_PENDING_TAB_LIMIT_DISABLE_AT] <= now
+  ) {
+    patch[K_TAB_LIMIT_ENABLED] = false;
+    patch[K_PENDING_TAB_LIMIT_DISABLE_AT] = null;
   }
   let u = sortHosts(
     Array.from(new Set((d[STORAGE.userDomains] || []).map(normalizeToHost).filter(Boolean)))
@@ -178,10 +246,13 @@ async function processPendingIfDue() {
  */
 async function scheduleNextPendingAlarm() {
   await chrome.alarms.clear(ALARM_PENDING);
-  const d = await chrome.storage.local.get([K_PENDING_DISABLE_AT, K_PENDING_REMOVALS]);
+  const d = await chrome.storage.local.get([K_PENDING_DISABLE_AT, K_PENDING_REMOVALS, K_PENDING_TAB_LIMIT_DISABLE_AT]);
   const ends = [];
   if (d[K_PENDING_DISABLE_AT] && typeof d[K_PENDING_DISABLE_AT] === "number" && d[K_PENDING_DISABLE_AT] > Date.now()) {
     ends.push(d[K_PENDING_DISABLE_AT]);
+  }
+  if (d[K_PENDING_TAB_LIMIT_DISABLE_AT] && typeof d[K_PENDING_TAB_LIMIT_DISABLE_AT] === "number" && d[K_PENDING_TAB_LIMIT_DISABLE_AT] > Date.now()) {
+    ends.push(d[K_PENDING_TAB_LIMIT_DISABLE_AT]);
   }
   const m = d[K_PENDING_REMOVALS];
   if (m && typeof m === "object") {
@@ -212,16 +283,20 @@ chrome.runtime.onInstalled.addListener((details) => {
   void (async () => {
     if (details.reason === "install") {
       await chrome.storage.local.set({
-        [STORAGE.blockingEnabled]: true,
+        [STORAGE.blockingEnabled]: false,
         [STORAGE.userDomains]: [],
         [K_PENDING_DISABLE_AT]: null,
         [K_PENDING_REMOVALS]: null,
-        [K_COOLDOWN_MIN]: 5
+        [K_COOLDOWN_MIN]: 5,
+        [K_TAB_LIMIT_ENABLED]: false,
+        [K_TAB_LIMIT_MAX]: 8,
+        [K_PENDING_TAB_LIMIT_DISABLE_AT]: null
       });
     }
     await processPendingIfDue();
     await rebuildFromStorage();
     await scheduleNextPendingAlarm();
+    await enforceTabLimitFromStorage();
   })();
 });
 
@@ -230,6 +305,7 @@ chrome.runtime.onStartup.addListener(() => {
     await processPendingIfDue();
     await scheduleNextPendingAlarm();
     await rebuildFromStorage();
+    await enforceTabLimitFromStorage();
   })();
 });
 
@@ -238,8 +314,11 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (changes[STORAGE.blockingEnabled] || changes[STORAGE.userDomains]) {
     scheduleRebuild();
   }
-  if (changes[K_PENDING_DISABLE_AT] || changes[K_PENDING_REMOVALS]) {
+  if (changes[K_PENDING_DISABLE_AT] || changes[K_PENDING_REMOVALS] || changes[K_PENDING_TAB_LIMIT_DISABLE_AT]) {
     void scheduleNextPendingAlarm();
+  }
+  if (changes[K_TAB_LIMIT_ENABLED] || changes[K_TAB_LIMIT_MAX]) {
+    void enforceTabLimitFromStorage();
   }
 });
 
@@ -269,4 +348,5 @@ void (async () => {
   await processPendingIfDue();
   await scheduleNextPendingAlarm();
   await rebuildFromStorage();
+  await enforceTabLimitFromStorage();
 })();

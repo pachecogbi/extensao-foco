@@ -35,7 +35,8 @@ async function focoCanEditCooldownSetting() {
   const d = await chrome.storage.local.get([
     "blockingEnabled",
     "pendingDisableAt",
-    "pendingRemovals"
+    "pendingRemovals",
+    "pendingTabLimitDisableAt"
   ]);
   const now = Date.now();
   if (d.blockingEnabled !== false) {
@@ -43,6 +44,13 @@ async function focoCanEditCooldownSetting() {
   }
   if (d.pendingDisableAt && typeof d.pendingDisableAt === "number" && d.pendingDisableAt > now) {
     return { canEdit: false, reason: "disableTimer" };
+  }
+  if (
+    d.pendingTabLimitDisableAt &&
+    typeof d.pendingTabLimitDisableAt === "number" &&
+    d.pendingTabLimitDisableAt > now
+  ) {
+    return { canEdit: false, reason: "tabLimitTimer" };
   }
   const pr = d.pendingRemovals;
   if (pr && typeof pr === "object" && !Array.isArray(pr)) {

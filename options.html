@@ -42,6 +42,43 @@
           </label>
         </section>
 
+        <section class="card">
+          <h2 class="h2">Limite de abas</h2>
+          <p class="help">
+            Conta todas as abas de todas as janelas. Ao ultrapassares o máximo, a aba que acabaste de abrir é fechada; ao activares
+            o limite com abas a mais, as mais recentes são fechadas até cumprir o tecto. Independente do bloqueio de sites. Para
+            desligar só o limite de abas, aplica o mesmo <strong>tempo de reflexão</strong> que no bloqueio principal; podes
+            anular a qualquer momento.
+          </p>
+          <label class="row-check">
+            <input type="checkbox" id="tabLimitEnabled" />
+            <span>Limitar número de abas</span>
+          </label>
+          <p class="help help-tab">Indica o tecto (2 a 100) e carrega em «Aplicar tecto» para guardar.</p>
+          <div class="form-add">
+            <input
+              type="number"
+              id="tabLimitMax"
+              class="in"
+              min="2"
+              max="100"
+              step="1"
+              inputmode="numeric"
+              aria-label="Número máximo de abas"
+            />
+            <button type="button" class="btn primary" id="saveTabMax">Aplicar tecto</button>
+          </div>
+        </section>
+
+        <section class="card pending-cooldown" id="boxPendingTabLimit" hidden>
+          <h2 class="h2 h2-pending">Desligar o limite de abas (agendado)</h2>
+          <p class="encouragement" id="encouragementTabLimit">
+            O limite de abas continua a aplicar-se. Se ainda fizer sentido, desliga a seguir; podes anular a qualquer momento.
+          </p>
+          <p class="countdown" id="tabLimitCountdown" aria-live="polite">5:00</p>
+          <button type="button" class="btn wide" id="cancelPendingTabLimit">Manter o limite de abas (anular)</button>
+        </section>
+
         <section class="card pending-cooldown" id="boxPendingDisable" hidden>
           <h2 class="h2 h2-pending">Desativação agendada</h2>
           <p class="encouragement" id="encouragementDisable">

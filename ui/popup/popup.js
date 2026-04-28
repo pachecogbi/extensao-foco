@@ -236,8 +236,8 @@ $("optPage")?.addEventListener("click", () => {
 
 $("toSettings")?.addEventListener("click", () => {
   const u = typeof chrome !== "undefined" && chrome.runtime?.getURL
-    ? chrome.runtime.getURL("settings.html")
-    : "settings.html";
+    ? chrome.runtime.getURL("ui/settings/settings.html")
+    : "ui/settings/settings.html";
   if (window.open) {
     window.open(u, "_blank", "noopener");
   } else {

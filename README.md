@@ -42,10 +42,26 @@ Serve para **reduzir distrações** sem listas genéricas na Internet: o que fic
    [`chrome://extensions`](chrome://extensions)  
 3. **Activa o “Modo de programador”** (canto superior direito).
 4. Clica em **“Carregar sem empaquetamento”** (ou *Load unpacked*).
-5. Selecciona a **pasta raiz** do projecto (onde está o `manifest.json`, ao lado de `background.js`, `options.html`, etc.).
+5. Selecciona a **pasta raiz** do projecto (onde está o `manifest.json`, com as pastas `background/`, `ui/`, `lib/`, `icons/`, etc.).
 6. Confirma: a extensão **Foco** deve surgir na lista, com o pin opcional na barra de extensões.
 
 > **Nota:** Se a pasta for movida depois, o browser pode deixar de a encontrar — volta a “Carregar sem empaquetamento” apontando para a nova localização, ou reinstala a partir de um `.zip` com a mesma estrutura.
+
+### Estrutura do repositório
+
+O código está separado por função, com o `manifest.json` e os ícones na raiz:
+
+| Local | Conteúdo |
+|--------|-----------|
+| **`background/`** | *Service worker* (`background.js`) — regras DNR, alarmes, limite de abas, contagem de tempo por site. |
+| **`lib/`** | Código partilhado (p.ex. `foco-cooldown.js` carregado pelas páginas de UI). |
+| **`ui/blocked/`** | Página mostrada ao bloquear um site (`web_accessible_resources`). |
+| **`ui/options/`** | Página de opções (lista de bloqueio, limites de tempo). |
+| **`ui/popup/`** | *Popup* da acção da extensão. |
+| **`ui/settings/`** | Configurações (tempo de reflexão, limite de abas), com estilos partilhados a partir de `ui/options/`. |
+| **`icons/`** | Ícones do manifest. |
+
+As rotas no `manifest.json` e o `extensionPath` do DNR usam estes caminhos relativos à raiz da extensão (ex.: `ui/blocked/blocked.html`).
 
 ---
 
@@ -66,7 +82,7 @@ A lista de **sites**, o **limite de tempo** por domínio, o **uso do dia** e o r
 
 ## Resumo técnico
 
-- **Manifest V3** com *service worker* e **Declarative Net Request**: redireccionamento de pedidos (`main_frame` e `sub_frame`) para [blocked.html](blocked.html) incluída na extensão; regras reconstruídas a partir de armazenamento local, com teto e fila de reconstrução no *background*.
+- **Manifest V3** com *service worker* e **Declarative Net Request**: redireccionamento de pedidos (`main_frame` e `sub_frame`) para [ui/blocked/blocked.html](ui/blocked/blocked.html) incluída na extensão; regras reconstruídas a partir de armazenamento local, com teto e fila de reconstrução no *background*.
 - **Alarms** do Chrome: atrasos de desactivação, remoções pendentes, limite de abas e, para limites de **tempo por site**, lembrete de **1 minuto** que soma o uso.
 - **Limites de tempo diários** (`siteTimeLimits`, `siteTimeUsage` e ponto de retoma de segmento no armazenamento) com contagem **enquanto houver** tabs HTTP(S) a corresponder ao domínio, reset por **chave de dia** no fuso local, e reunião de domínios bloqueio manual + domínios com tecto de tempo atingido num único `updateDynamicRules`.
 

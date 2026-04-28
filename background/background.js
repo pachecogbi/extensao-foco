@@ -322,7 +322,7 @@ function makeBlockRedirectRule(id, host) {
     priority: 1,
     action: {
       type: "redirect",
-      redirect: { extensionPath: "/blocked.html" }
+      redirect: { extensionPath: "/ui/blocked/blocked.html" }
     },
     condition: {
       urlFilter: "||" + host + "^",

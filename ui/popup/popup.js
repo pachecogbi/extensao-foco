@@ -112,7 +112,7 @@ async function refresh() {
   const mins = await focoGetPendingCooldownMinutes();
   const enc = $("pendEnc");
   if (enc) {
-    enc.textContent = "A desativação aplica após " + mins + " min. (em Configurações). Podes anular abaixo.";
+    enc.textContent = "A desativação ocorre após " + mins + " min. (em Configurações). Você pode cancelar abaixo.";
   }
   const blockOn = d[S.blockingEnabled] !== false;
   $("blockingEnabled").checked = blockOn;
@@ -149,14 +149,14 @@ $("blockingEnabled").addEventListener("change", (e) => {
   void (async () => {
     if (!input.checked) {
       if (hasPending()) {
-        setSt("Já há desativação agendada. Anula primeiro.", false);
+        setSt("Já há desativação agendada. Cancele antes.", false);
         input.checked = true;
         return;
       }
-      setSt("A agendar desativação… o bloqueio continua; podes anular.", true);
+      setSt("Agendando desativação… o bloqueio continua; você pode cancelar.", true);
       try {
         const ms = await focoGetPendingCooldownMs();
-        setSt("Agendado. Abre Configurações para ver o tempo de reflexão. Podes anular.", true);
+        setSt("Agendado. Abra Configurações para ver o tempo de reflexão. Você pode cancelar.", true);
         await chrome.storage.local.set({ [K.pendingDisableAt]: Date.now() + ms });
         input.checked = true;
         await refresh();
@@ -188,7 +188,7 @@ $("pendCancel").addEventListener("click", () => {
       await chrome.storage.local.set({ [K.pendingDisableAt]: null });
       await refresh();
       fireReschedule();
-      setSt("Desativação anulada — bloqueio ativo.", true);
+      setSt("Desativação cancelada — bloqueio ativo.", true);
     } catch (e) {
       setSt("Erro: " + (e && e.message), false);
     }

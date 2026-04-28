@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pt-PT">
+<html lang="pt-BR">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -37,7 +37,7 @@
                 inputmode="numeric"
                 required
               />
-              <button type="submit" class="btn primary" id="saveMins" disabled>Guardar</button>
+              <button type="submit" class="btn primary" id="saveMins" disabled>Salvar</button>
             </div>
             <p class="set-ok" id="setStatus" role="status" aria-live="off"></p>
           </form>
@@ -45,7 +45,7 @@
 
         <section class="card">
           <h2 class="h2">Limite de abas</h2>
-          <p class="help set-help set-help-tight">Todas as janelas, máximo 2 a 100. Ao abrires a mais, fecha-se a nova; com excedente, cortam-se as abas mais recentes.</p>
+          <p class="help set-help set-help-tight">Todas as janelas, máximo 2 a 100. Se abrir além do limite, a nova aba se fecha; com excedente, as abas mais recentes são fechadas.</p>
           <label class="row-check">
             <input type="checkbox" id="tabLimitEnabled" />
             <span>Ativar</span>
@@ -68,7 +68,7 @@
         <section class="card pending-cooldown" id="boxPendingTabLimit" hidden>
           <h2 class="h2 h2-pending">A desligar: limite de abas</h2>
           <p class="countdown" id="tabLimitCountdown" aria-live="polite">5:00</p>
-          <button type="button" class="btn wide" id="cancelPendingTabLimit">Anular (manter o limite)</button>
+          <button type="button" class="btn wide" id="cancelPendingTabLimit">Cancelar (manter o limite)</button>
         </section>
       </div>
     </div>

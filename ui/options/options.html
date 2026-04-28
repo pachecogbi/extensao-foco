@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="pt-PT">
+<html lang="pt-BR">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Foco — definições</title>
+    <title>Foco — opções</title>
     <link rel="stylesheet" href="options.css" />
   </head>
   <body>
@@ -14,7 +14,7 @@
             class="btn-gear"
             id="toSettings"
             href="../settings/settings.html"
-            title="Mais definições (tempo de reflexão, etc.)"
+            title="Mais opções (tempo de reflexão, etc.)"
             aria-label="Configurações"
             ><span class="visually-hidden">Configurações</span
             ><svg
@@ -31,7 +31,7 @@
               /></svg
           ></a>
           <h1 class="logo">Foco</h1>
-          <p class="tagline">Bloqueie sites e veja um aviso do Foco ao tentar acedê-los.</p>
+          <p class="tagline">Bloqueie sites e veja um aviso do Foco ao tentar acessá-los.</p>
         </header>
 
         <section class="block card">
@@ -45,9 +45,9 @@
         <section class="card add-block" id="cardTimeLimit">
           <h2 class="h2">Limite de tempo por site (cada dia)</h2>
           <p class="help">
-            Define quanto tempo (em minutos) podes <strong>usar com abas abertas</strong> nesse sítio, por dia, no fuso
-            do teu equipamento. Ao chegares a esse tempo, o site fica com o ecrã de bloqueio até <strong>ao dia seguinte</strong>;
-            a contagem reinicia à meia-noite. Subdomínios (ex. <code>www</code>) contam.
+            Defina quanto tempo (em minutos) você pode <strong>usar com abas abertas</strong> nesse site, por dia, no
+            fuso do seu equipamento. Ao atingir esse tempo, o site fica com a tela de bloqueio <strong>até o dia seguinte</strong>;
+            a contagem é zerada na meia-noite. Subdomínios (ex. <code>www</code>) entram.
           </p>
           <form class="form-add" id="formTimeLimit" autocomplete="off">
             <input
@@ -79,25 +79,25 @@
         <section class="card list-block" id="listTimeLimit" hidden>
           <h2 class="h2">Uso e limites</h2>
           <p class="list-hint" id="timeLimitHint" hidden>
-            Só aplica a sites com limite: não precisas de os colocar na «lista de bloqueio» acima.
+            Só se aplica a sites com limite: você não precisa colocá-los na «lista de bloqueio» acima.
           </p>
-          <p class="empty" id="emptyTimeList" hidden>Sem limites de tempo. Usa o formulário acima.</p>
+          <p class="empty" id="emptyTimeList" hidden>Sem limites de tempo. Use o formulário acima.</p>
           <ul class="list" id="timeListEl" role="list" hidden></ul>
         </section>
 
         <section class="card pending-cooldown" id="boxPendingDisable" hidden>
           <h2 class="h2 h2-pending">Desativação agendada</h2>
           <p class="encouragement" id="encouragementDisable">
-            Respire. O impulso passa — manter o bloqueio por mais alguns minutos consolida o teu foco. Se ainda fizer sentido, a
-            desativação aplicar-se-á a seguir; podes anular a qualquer momento.
+            Respire. O impulso passa — manter o bloqueio por mais alguns minutos consolida o seu foco. Se ainda fizer
+            sentido, a desativação ocorre a seguir; você pode cancelar a qualquer momento.
           </p>
           <p class="countdown" id="disableCountdown" aria-live="polite">5:00</p>
-          <button type="button" class="btn wide" id="cancelPendingDisable">Manter a extensão ativa (anular)</button>
+          <button type="button" class="btn wide" id="cancelPendingDisable">Manter a extensão ativa (cancelar)</button>
         </section>
 
         <section class="card add-block">
           <h2 class="h2">Adicionar site</h2>
-          <p class="help">Indique o domínio (ex. <code>exemplo.com</code>) ou cole o URL completo — o nome do <strong>site</strong> é detetado sozinho.</p>
+          <p class="help">Indique o domínio (ex. <code>exemplo.com</code>) ou cole o URL completo — o nome do <strong>site</strong> é detectado sozinho.</p>
           <form class="form-add" id="formAdd" autocomplete="off">
             <input
               type="text"

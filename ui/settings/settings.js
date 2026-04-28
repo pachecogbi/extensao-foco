@@ -99,19 +99,19 @@ async function loadFeaturePends() {
 
 function lockText(g) {
   if (g.canEdit) {
-    return "Podes alterar o valor. Só se aplica a futuros agendamentos, depois de guardar.";
+    return "Você pode alterar o valor. Só se aplica a agendamentos futuros, após salvar.";
   }
   if (g.reason === "blocking") {
-    return "Enquanto a extensão estiver ativa (bloqueio ligado) não podes editar. Desliga a extensão no ecrã principal, espera de não haver nenhum temporizador a contar, e volte aqui.";
+    return "Com a extensão ativa (bloqueio ligado) não dá para editar. Desative a extensão na tela principal, aguarde até não haver nenhum temporizador, e volte aqui.";
   }
   if (g.reason === "disableTimer") {
-    return "Há desativação da extensão a contar. Anula ou deixa o tempo acabar, e a extensão inactiva, para editares o tempo de reflexão.";
+    return "Há desativação da extensão em contagem. Cancele ou deixe o tempo acabar, com a extensão inativa, para editar o tempo de reflexão.";
   }
   if (g.reason === "removalTimers") {
-    return "Há remoção(ões) de site a contar. Anula ou aguarda o fim, sem temporizadores, e aí podes editar.";
+    return "Há remoção(ões) de site em contagem. Cancele ou aguarde até acabar, sem temporizadores, para poder editar de novo.";
   }
   if (g.reason === "tabLimitTimer") {
-    return "Há desligação do limite de abas a contar. Anula abaixo ou aguarda o fim, sem outro temporizador, para editar o minutos.";
+    return "Há contagem para desligar o limite de abas. Cancele abaixo ou aguarde o fim, sem outro temporizador, para editar os minutos.";
   }
   return "Não é possível editar o tempo neste momento.";
 }
@@ -139,7 +139,7 @@ async function refresh() {
     lock.textContent = lockText(g);
   }
   if (g.canEdit) {
-    setLocalStatus("Ajusta os minutos (1–180) e guarda.", true);
+    setLocalStatus("Ajuste os minutos (1–180) e salve.", true);
   } else {
     setLocalStatus("", true);
   }
@@ -151,19 +151,19 @@ el("formTiming")?.addEventListener("submit", (e) => {
   void (async () => {
     const g = await focoCanEditCooldownSetting();
     if (!g.canEdit) {
-      setLocalStatus("Ainda não podes editar. Vê a mensagem acima.", false);
+      setLocalStatus("Ainda não dá para editar. Veja a mensagem acima.", false);
       await refresh();
       return;
     }
     const raw = (el("mins")?.value || "").trim();
     const n = parseInt(raw, 10);
     if (!Number.isFinite(n) || n < 1 || n > 180) {
-      setLocalStatus("Indica entre 1 e 180 minutos (número inteiro).", false);
+      setLocalStatus("Indique entre 1 e 180 minutos (número inteiro).", false);
       return;
     }
     try {
       await focoSetPendingCooldownMinutes(n);
-      setLocalStatus("Guardado: " + n + " min.", true);
+      setLocalStatus("Salvo: " + n + " min.", true);
     } catch (e) {
       setLocalStatus("Erro: " + (e && e.message), false);
     }
@@ -176,7 +176,7 @@ el("tabLimitEnabled")?.addEventListener("change", (e) => {
   void (async () => {
     if (!input.checked) {
       if (hasTabLimitPending()) {
-        setLocalStatus("Já há desligação a contar. Anula primeiro.", false);
+        setLocalStatus("Já há desligação em contagem. Cancele antes.", false);
         input.checked = true;
         return;
       }

@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Foco — bloqueio de sites",
   "version": "2.7.0",
-  "description": "Bloqueie sites manualmente e, opcionalmente, defina minutos de uso diários (por site) com bloqueio até ao dia seguinte.",
+  "description": "Bloqueie sites manualmente e, opcionalmente, defina minutos de uso diários (por site) com bloqueio até o dia seguinte.",
   "permissions": ["declarativeNetRequest", "storage", "alarms", "tabs"],
   "host_permissions": ["<all_urls>"],
   "background": {

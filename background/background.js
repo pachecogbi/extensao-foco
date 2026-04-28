@@ -136,7 +136,7 @@ function hostsExhaustedToday(day, limits, usage) {
 }
 
 /**
- * Ajusta o uso por site ao dia; persiste; actualiza início de segmento; bloqueia ao atingir teto.
+ * Ajusta o uso por site ao dia; persiste; atualiza início de segmento; bloqueia ao atingir teto.
  * @returns {Promise<void>}
  */
 async function accrueSiteTimeAndMaybeRebuild() {

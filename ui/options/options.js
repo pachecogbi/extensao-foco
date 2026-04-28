@@ -255,9 +255,9 @@ function render() {
     remHint.hidden = domains.length === 0;
     if (domains.length > 0) {
       remHint.textContent =
-        "Ao tocar em «Remover (" +
+        "Ao clicar em «Remover (" +
         cooldownMins +
-        " min.)», cada site inicia o seu temporizador nessa duração; contadores por linha, independentes; quando o de um site acaba, só esse é removido.";
+        " min.)», cada site inicia o temporizador nessa duração; contadores por linha, independentes; quando o de um site acaba, só esse é removido.";
     }
   }
   if (domains.length === 0) {
@@ -282,7 +282,7 @@ function render() {
         const p = document.createElement("p");
         p.className = "pend-note";
         p.textContent =
-          "Repetir a decisão dá força à tua concentração. Se ainda tiveres a certeza, o site deixa de estar bloqueado a seguir — só este, no seu tempo.";
+          "Reforçar a escolha ajuda a manter a concentração. Se ainda tiver certeza, o site deixa de ser bloqueado a seguir — só este, no ritmo dele.";
         const rowTimer = document.createElement("div");
         rowTimer.className = "site-cooldown";
         rowTimer.setAttribute("role", "status");
@@ -307,8 +307,8 @@ function render() {
         const ca = document.createElement("button");
         ca.type = "button";
         ca.className = "btn-pend";
-        ca.textContent = "Anular remoção";
-        ca.setAttribute("aria-label", "Anular remoção de " + d);
+        ca.textContent = "Cancelar remoção";
+        ca.setAttribute("aria-label", "Cancelar remoção de " + d);
         ca.addEventListener("click", () => void cancelRemoval(d));
         col.appendChild(ca);
       } else {
@@ -373,7 +373,7 @@ function renderTimeLimits() {
     const p1 = document.createElement("p");
     p1.className = "pend-note";
     p1.style.marginTop = "0.25rem";
-    p1.textContent = "Hoje: " + formatDurationMsShort(used) + " de " + maxMin + " min. " + (ex ? " — limite alcançado (bloqueio até amanhã)." : "");
+    p1.textContent = "Hoje: " + formatDurationMsShort(used) + " de " + maxMin + " min. " + (ex ? " — limite atingido (bloqueio até amanhã)." : "");
     wrap.appendChild(t1);
     wrap.appendChild(p1);
     li.appendChild(wrap);
@@ -494,7 +494,7 @@ async function scheduleRemove(host) {
   const m = { ...(typeof pendingRemovals === "object" && pendingRemovals ? pendingRemovals : {}) };
   const already = removalEndAt(m, key);
   if (already != null && already > Date.now()) {
-    setStatus("Já há remoção agendada — anule primeiro se quiseres alterar o pedido.", false);
+    setStatus("Já há remoção agendada — cancele antes se quiser alterar o pedido.", false);
     return;
   }
   const mins = await focoGetPendingCooldownMinutes();
@@ -502,7 +502,7 @@ async function scheduleRemove(host) {
   m[key] = Date.now() + mins * 60 * 1000;
   setStatus(
     String(mins) +
-      " min. a contar para este site (o tempo vêm das configurações, ícone de engrenagem). Podes anular; o site fica bloqueado até ao fim.",
+      " min. em contagem para este site (o tempo vem de Configurações, ícone de engrenagem). Você pode cancelar; o site fica bloqueado até o fim.",
     true
   );
   try {
@@ -522,7 +522,7 @@ async function cancelRemoval(host) {
     if (k.toLowerCase() === key) delete m[k];
   }
   const out = Object.keys(m).length ? m : null;
-  setStatus("Remoção de " + host + " anulada. O site continua na lista de bloqueio.", true);
+  setStatus("Remoção de " + host + " cancelada. O site continua na lista de bloqueio.", true);
   try {
     await chrome.storage.local.set({ [K.pendingRemovals]: out });
     await load();
@@ -540,7 +540,7 @@ async function addFromInput() {
   }
   const h = normalizeToHost(v);
   if (!h) {
-    setStatus("Não percebemos o endereço. Tente o domínio (ex. exemplo.com).", false);
+    setStatus("Não entendemos o endereço. Tente o domínio (ex. exemplo.com).", false);
     return;
   }
   if (domains.includes(h)) {
@@ -553,7 +553,7 @@ async function addFromInput() {
   }
   el("newSite").value = "";
   domains = sortArr([...domains, h]);
-  setStatus("A adicionar…", true);
+  setStatus("Adicionando…", true);
   try {
     await persist();
   } catch (e) {
@@ -573,19 +573,19 @@ el("formTimeLimit")?.addEventListener("submit", (e) => {
     const rawM = (el("timeLimitMins") && el("timeLimitMins").value) || "";
     const h = normalizeToHost(v.trim());
     if (!h) {
-      setStatus("Não percebemos o endereço do site para o limite de tempo. Ex.: youtube.com", false);
+      setStatus("Não entendemos o endereço do site no limite de tempo. Ex.: youtube.com", false);
       return;
     }
     const m = Math.floor(parseInt(String(rawM).trim(), 10));
     if (!Number.isFinite(m) || m < TIME_MINS_MIN || m > TIME_MINS_MAX) {
-      setStatus("Indica entre " + TIME_MINS_MIN + " e " + TIME_MINS_MAX + " minutos por dia.", false);
+      setStatus("Indique entre " + TIME_MINS_MIN + " e " + TIME_MINS_MAX + " minutos por dia.", false);
       return;
     }
     if (Object.keys(siteTimeLimits || {}).length >= 200) {
-      setStatus("Limite de 200 entradas (tempo). Remove uma para adicionar outra.", false);
+      setStatus("Limite de 200 entradas (tempo). Remova uma para adicionar outra.", false);
       return;
     }
-    setStatus("A guardar o limite…", true);
+    setStatus("Salvando o limite…", true);
     try {
       const next = { ...siteTimeLimits, [h]: m };
       await chrome.storage.local.set({ [S.siteTimeLimits]: next });
@@ -604,7 +604,7 @@ el("formTimeLimit")?.addEventListener("submit", (e) => {
 
 el("cancelPendingDisable").addEventListener("click", () => {
   void (async () => {
-    setStatus("Desativação anulada. A extensão mantém o bloqueio ativo.", true);
+    setStatus("Desativação cancelada. A extensão mantém o bloqueio ativo.", true);
     try {
       await chrome.storage.local.set({ [K.pendingDisableAt]: null });
       await load();
@@ -621,16 +621,16 @@ el("blockingEnabled").addEventListener("change", (e) => {
   void (async () => {
     if (!input.checked) {
       if (typeof pendingDisableAt === "number" && pendingDisableAt > Date.now()) {
-        setStatus("Já tens uma desativação a contar decrescente. Anula primeiro, se quiseres alterar.", false);
+        setStatus("Já existe uma desativação em contagem. Cancele antes se quiser alterar.", false);
         input.checked = true;
         return;
       }
-      setStatus("A agendar desativação…", true);
+        setStatus("Agendando desativação…", true);
       try {
         const mins = await focoGetPendingCooldownMinutes();
         cooldownMins = mins;
         setStatus(
-          "O bloqueio mantém-se ativo " + mins + " min.; podes anular a qualquer momento. (Tempo definido em Configurações.)",
+          "O bloqueio continua ativo por " + mins + " min.; você pode cancelar a qualquer momento. (Tempo definido em Configurações.)",
           true
         );
         const end = Date.now() + mins * 60 * 1000;
@@ -661,7 +661,7 @@ el("blockingEnabled").addEventListener("change", (e) => {
 async function scheduleNextAndLoad() {
   await load();
   fireReschedule();
-  setStatus("Bloqueio ativado; qualquer desativação em espera foi limpa.", true);
+  setStatus("Bloqueio ativado; qualquer desativação pendente foi descartada.", true);
 }
 
 chrome.storage.onChanged.addListener((c, a) => {

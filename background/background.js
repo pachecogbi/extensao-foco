@@ -14,6 +14,8 @@ const STORAGE = {
 const K_PENDING_DISABLE_AT = "pendingDisableAt";
 /** { "domínio": epochMsFim } — remoção aplica nessa hora. */
 const K_PENDING_REMOVALS = "pendingRemovals";
+/** { "host": epochMsFim } — remoção do *limite de tempo* aplica nessa hora. */
+const K_PENDING_TIME_LIMIT_REMOVALS = "pendingTimeLimitRemovals";
 const K_TAB_LIMIT_ENABLED = "tabLimitEnabled";
 const K_TAB_LIMIT_MAX = "tabLimitMax";
 const K_PENDING_TAB_LIMIT_DISABLE_AT = "pendingTabLimitDisableAt";
@@ -206,6 +208,8 @@ async function accrueSiteTimeAndMaybeRebuild() {
 
   for (const h of Object.keys(usage)) {
     if (limits[h] == null) {
+      // Mantém uso do dia ao remover o limite e readicionar no mesmo dia (não recomeçar a contagem).
+      if (usage[h] && usage[h].day === day) continue;
       delete usage[h];
     }
   }
@@ -446,7 +450,11 @@ async function processPendingIfDue() {
     STORAGE.userDomains,
     K_PENDING_DISABLE_AT,
     K_PENDING_REMOVALS,
-    K_PENDING_TAB_LIMIT_DISABLE_AT
+    K_PENDING_TAB_LIMIT_DISABLE_AT,
+    K_PENDING_TIME_LIMIT_REMOVALS,
+    K_SITE_TIME_LIMITS,
+    K_SITE_TIME_USAGE,
+    K_SITE_TIME_ACCRUE_SINCE
   ]);
   const now = Date.now();
   const patch = {};
@@ -478,6 +486,47 @@ async function processPendingIfDue() {
     patch[STORAGE.userDomains] = u;
     patch[K_PENDING_REMOVALS] = Object.keys(pr).length > 0 ? pr : null;
   }
+  const ptr0 = d[K_PENDING_TIME_LIMIT_REMOVALS];
+  const ptime = ptr0 && typeof ptr0 === "object" && !Array.isArray(ptr0) ? { ...ptr0 } : {};
+  let timeLimitRemovalApplied = false;
+  const limT = normalizeTimeLimitsObject(d[K_SITE_TIME_LIMITS]);
+  const usageT =
+    d[K_SITE_TIME_USAGE] && typeof d[K_SITE_TIME_USAGE] === "object" && !Array.isArray(d[K_SITE_TIME_USAGE]) ? { ...d[K_SITE_TIME_USAGE] } : {};
+  const accrT =
+    d[K_SITE_TIME_ACCRUE_SINCE] && typeof d[K_SITE_TIME_ACCRUE_SINCE] === "object" && !Array.isArray(d[K_SITE_TIME_ACCRUE_SINCE]) ? { ...d[K_SITE_TIME_ACCRUE_SINCE] } : {};
+  for (const h of Object.keys(ptime)) {
+    const when = ptime[h];
+    if (typeof when !== "number" || !Number.isFinite(when)) {
+      delete ptime[h];
+      timeLimitRemovalApplied = true;
+      continue;
+    }
+    if (when > now) continue;
+    const hl = h.toLowerCase();
+    for (const k of [...Object.keys(limT)]) {
+      if (k.toLowerCase() === hl) {
+        delete limT[k];
+      }
+    }
+    for (const k of [...Object.keys(accrT)]) {
+      if (k.toLowerCase() === hl) {
+        delete accrT[k];
+      }
+    }
+    delete ptime[h];
+    for (const k of [...Object.keys(ptime)]) {
+      if (k.toLowerCase() === hl && k !== h) {
+        delete ptime[k];
+      }
+    }
+    timeLimitRemovalApplied = true;
+  }
+  if (timeLimitRemovalApplied) {
+    patch[K_SITE_TIME_LIMITS] = Object.keys(limT).length > 0 ? limT : {};
+    patch[K_SITE_TIME_USAGE] = usageT;
+    patch[K_SITE_TIME_ACCRUE_SINCE] = Object.keys(accrT).length > 0 ? accrT : null;
+    patch[K_PENDING_TIME_LIMIT_REMOVALS] = Object.keys(ptime).length > 0 ? ptime : null;
+  }
   if (Object.keys(patch).length > 0) {
     await chrome.storage.local.set(patch);
   }
@@ -490,7 +539,12 @@ async function processPendingIfDue() {
  */
 async function scheduleNextPendingAlarm() {
   await chrome.alarms.clear(ALARM_PENDING);
-  const d = await chrome.storage.local.get([K_PENDING_DISABLE_AT, K_PENDING_REMOVALS, K_PENDING_TAB_LIMIT_DISABLE_AT]);
+  const d = await chrome.storage.local.get([
+    K_PENDING_DISABLE_AT,
+    K_PENDING_REMOVALS,
+    K_PENDING_TAB_LIMIT_DISABLE_AT,
+    K_PENDING_TIME_LIMIT_REMOVALS
+  ]);
   const ends = [];
   if (d[K_PENDING_DISABLE_AT] && typeof d[K_PENDING_DISABLE_AT] === "number" && d[K_PENDING_DISABLE_AT] > Date.now()) {
     ends.push(d[K_PENDING_DISABLE_AT]);
@@ -501,6 +555,14 @@ async function scheduleNextPendingAlarm() {
   const m = d[K_PENDING_REMOVALS];
   if (m && typeof m === "object") {
     for (const t of Object.values(m)) {
+      if (typeof t === "number" && t > Date.now()) {
+        ends.push(t);
+      }
+    }
+  }
+  const ptl = d[K_PENDING_TIME_LIMIT_REMOVALS];
+  if (ptl && typeof ptl === "object") {
+    for (const t of Object.values(ptl)) {
       if (typeof t === "number" && t > Date.now()) {
         ends.push(t);
       }
@@ -536,6 +598,7 @@ chrome.runtime.onInstalled.addListener((details) => {
         [STORAGE.userDomains]: [],
         [K_PENDING_DISABLE_AT]: null,
         [K_PENDING_REMOVALS]: null,
+        [K_PENDING_TIME_LIMIT_REMOVALS]: null,
         [K_COOLDOWN_MIN]: 5,
         [K_TAB_LIMIT_ENABLED]: false,
         [K_TAB_LIMIT_MAX]: 8,
@@ -570,7 +633,12 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (changes[STORAGE.blockingEnabled] || changes[STORAGE.userDomains] || changes[K_SITE_TIME_LIMITS]) {
     scheduleRebuild();
   }
-  if (changes[K_PENDING_DISABLE_AT] || changes[K_PENDING_REMOVALS] || changes[K_PENDING_TAB_LIMIT_DISABLE_AT]) {
+  if (
+    changes[K_PENDING_DISABLE_AT] ||
+    changes[K_PENDING_REMOVALS] ||
+    changes[K_PENDING_TAB_LIMIT_DISABLE_AT] ||
+    changes[K_PENDING_TIME_LIMIT_REMOVALS]
+  ) {
     void scheduleNextPendingAlarm();
   }
   if (changes[K_TAB_LIMIT_ENABLED] || changes[K_TAB_LIMIT_MAX]) {

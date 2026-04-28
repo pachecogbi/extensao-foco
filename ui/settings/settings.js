@@ -108,7 +108,7 @@ function lockText(g) {
     return "Há desativação da extensão em contagem. Cancele ou deixe o tempo acabar, com a extensão inativa, para editar o tempo de reflexão.";
   }
   if (g.reason === "removalTimers") {
-    return "Há remoção(ões) de site em contagem. Cancele ou aguarde até acabar, sem temporizadores, para poder editar de novo.";
+    return "Há remoção(ões) da lista de bloqueio e/ou do limite de tempo em contagem. Cancele ou aguarde até acabar, sem temporizadores, para poder editar de novo.";
   }
   if (g.reason === "tabLimitTimer") {
     return "Há contagem para desligar o limite de abas. Cancele abaixo ou aguarde o fim, sem outro temporizador, para editar os minutos.";
@@ -239,6 +239,7 @@ chrome.storage.onChanged.addListener((c, a) => {
       c.blockingEnabled ||
       c.pendingDisableAt ||
       c.pendingRemovals ||
+      c.pendingTimeLimitRemovals ||
       c.pendingCooldownMinutes ||
       c.pendingTabLimitDisableAt ||
       c.tabLimitEnabled ||

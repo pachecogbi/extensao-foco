@@ -8,7 +8,8 @@ const S = {
 
 const K = {
   pendingDisableAt: "pendingDisableAt",
-  pendingRemovals: "pendingRemovals"
+  pendingRemovals: "pendingRemovals",
+  pendingTimeLimitRemovals: "pendingTimeLimitRemovals"
 };
 
 const K_SITE_ACCR = "siteTimeAccrueSinceByHost";
@@ -44,6 +45,8 @@ let siteTimeUsage = /** @type {Record<string, { day: string, usedMs: number }>} 
 let cooldownMins = 5;
 /** @type {Record<string, number> | null} */
 let pendingRemovals = null;
+/** @type {Record<string, number> | null} */
+let pendingTimeLimitRemovals = null;
 let pendingDisableAt = null;
 let tickTimer = null;
 
@@ -179,6 +182,11 @@ function hasAnyPending() {
     const n = typeof t === "number" ? t : Number(t);
     if (Number.isFinite(n) && n > Date.now()) return true;
   }
+  const ptl = pendingTimeLimitRemovals || {};
+  for (const t of Object.values(ptl)) {
+    const n = typeof t === "number" ? t : Number(t);
+    if (Number.isFinite(n) && n > Date.now()) return true;
+  }
   return false;
 }
 
@@ -217,6 +225,15 @@ function updatePendingUi() {
     const h = node.getAttribute("data-rem-eta-for");
     if (!h) return;
     const when = removalEndAt(m, h);
+    if (when && when > now) {
+      node.textContent = formatRemainingMs(when - now);
+    }
+  });
+  const ptl = pendingTimeLimitRemovals || {};
+  document.querySelectorAll("[data-tl-rem-eta-for]").forEach((node) => {
+    const h = node.getAttribute("data-tl-rem-eta-for");
+    if (!h) return;
+    const when = removalEndAt(ptl, h);
     if (when && when > now) {
       node.textContent = formatRemainingMs(when - now);
     }
@@ -340,6 +357,7 @@ function renderTimeLimits() {
   const u = el("timeListEl");
   const empty = el("emptyTimeList");
   const hint = el("timeLimitHint");
+  const remHint = el("timeListRemHint");
   const list = siteTimeLimits && typeof siteTimeLimits === "object" ? siteTimeLimits : {};
   const keys = sortArr(Object.keys(list));
   if (!section || !u || !empty) return;
@@ -348,13 +366,22 @@ function renderTimeLimits() {
     u.hidden = true;
     empty.hidden = true;
     if (hint) hint.hidden = true;
+    if (remHint) remHint.hidden = true;
     return;
   }
   section.hidden = false;
   u.hidden = false;
   empty.hidden = true;
   if (hint) hint.hidden = false;
+  if (remHint) {
+    remHint.hidden = false;
+    remHint.textContent =
+      "Ao clicar em «Remover limite (" +
+      cooldownMins +
+      " min.)», inicia o temporizador (o valor vem de Configurações, ícone de engrenagem); a contagem é por linha; ao fim, só aquele site deixa de ter limite. Pode cancelar a qualquer momento no botão da linha.";
+  }
   u.innerHTML = "";
+  const m = pendingTimeLimitRemovals || {};
   const today = localDayKey();
   for (const d of keys) {
     const maxMin = list[d] != null ? list[d] : 0;
@@ -376,54 +403,99 @@ function renderTimeLimits() {
     p1.textContent = "Hoje: " + formatDurationMsShort(used) + " de " + maxMin + " min. " + (ex ? " — limite atingido (bloqueio até amanhã)." : "");
     wrap.appendChild(t1);
     wrap.appendChild(p1);
+    const endAt = removalEndAt(m, d);
+    const now = Date.now();
+    const scheduled = endAt != null && endAt > now;
+    if (scheduled) {
+      const p2 = document.createElement("p");
+      p2.className = "pend-note";
+      p2.textContent =
+        "Reforçar a escolha ajuda a manter o foco. Se ainda tiver a certeza, o site deixa de ter limite de tempo a seguir — só para este endereço.";
+      const rowTimer = document.createElement("div");
+      rowTimer.className = "site-cooldown";
+      rowTimer.setAttribute("role", "status");
+      rowTimer.setAttribute("aria-live", "off");
+      const tLabel = document.createElement("span");
+      tLabel.className = "site-cooldown-label";
+      tLabel.textContent = "Temporizador (só este site)";
+      const tVal = document.createElement("span");
+      tVal.className = "site-cooldown-digits";
+      tVal.setAttribute("data-tl-rem-eta-for", d);
+      tVal.textContent = formatRemainingMs(endAt - now);
+      rowTimer.appendChild(tLabel);
+      rowTimer.appendChild(tVal);
+      wrap.appendChild(p2);
+      wrap.appendChild(rowTimer);
+    }
     li.appendChild(wrap);
     const col = document.createElement("div");
     col.className = "li-btns";
-    const b = document.createElement("button");
-    b.type = "button";
-    b.className = "btn-remove";
-    b.setAttribute("aria-label", "Remover limite de " + d);
-    b.textContent = "Remover limite";
-    b.addEventListener("click", () => void removeTimeLimit(d));
-    col.appendChild(b);
+    if (scheduled) {
+      const ca = document.createElement("button");
+      ca.type = "button";
+      ca.className = "btn-pend";
+      ca.textContent = "Cancelar remoção do limite";
+      ca.setAttribute("aria-label", "Cancelar remoção do limite de " + d);
+      ca.addEventListener("click", () => void cancelTimeLimitRemoval(d));
+      col.appendChild(ca);
+    } else {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "btn-remove";
+      b.setAttribute(
+        "aria-label",
+        "Iniciar remoção do limite de tempo de " + d + " (aguarda " + cooldownMins + " minutos, só para este site)"
+      );
+      b.textContent = "Remover limite (" + cooldownMins + " min.)";
+      b.addEventListener("click", () => {
+        void scheduleTimeLimitRemove(d);
+      });
+      col.appendChild(b);
+    }
     li.appendChild(col);
     u.appendChild(li);
   }
+  startTick();
 }
 
-/**
- * @param {string} host
- */
-async function removeTimeLimit(host) {
-  const h = (host && String(host).toLowerCase()) || "";
-  if (!h) return;
-  const lim = { ...siteTimeLimits };
-  delete lim[h];
-  for (const k of Object.keys(lim)) {
-    if (k.toLowerCase() === h) delete lim[k];
+async function scheduleTimeLimitRemove(host) {
+  const key = (host && String(host).toLowerCase()) || "";
+  const m = { ...(typeof pendingTimeLimitRemovals === "object" && pendingTimeLimitRemovals ? pendingTimeLimitRemovals : {}) };
+  const already = removalEndAt(m, key);
+  if (already != null && already > Date.now()) {
+    setStatus("Já há remoção de limite agendada — cancele antes se quiser alterar o pedido (este site).", false);
+    return;
   }
-  const u = { ...siteTimeUsage };
-  delete u[h];
-  for (const k of Object.keys(u)) {
-    if (k.toLowerCase() === h) delete u[k];
-  }
-  const st = await chrome.storage.local.get(K_SITE_ACCR);
-  const accr = st[K_SITE_ACCR] && typeof st[K_SITE_ACCR] === "object" && !Array.isArray(st[K_SITE_ACCR]) ? { ...st[K_SITE_ACCR] } : {};
-  delete accr[h];
-  for (const k of Object.keys(accr)) {
-    if (k.toLowerCase() === h) delete accr[k];
-  }
+  const mins = await focoGetPendingCooldownMinutes();
+  cooldownMins = mins;
+  m[key] = Date.now() + mins * 60 * 1000;
+  setStatus(
+    String(mins) +
+      " min. em contagem para retirar o limite de tempo deste site. Pode cancelar; o teto de tempo mantém-se até o fim.",
+    true
+  );
   try {
-    await chrome.storage.local.set({
-      [S.siteTimeLimits]: Object.keys(lim).length > 0 ? lim : {},
-      [S.siteTimeUsage]: u,
-      [K_SITE_ACCR]: Object.keys(accr).length > 0 ? accr : null
-    });
-    await new Promise((resolve) => {
-      chrome.runtime.sendMessage({ type: "rebuild" }, () => resolve());
-    });
+    await chrome.storage.local.set({ [K.pendingTimeLimitRemovals]: m });
     await load();
-    setStatus("Limite de tempo removido: " + host, true);
+    fireReschedule();
+  } catch (e) {
+    setStatus("Erro: " + (e && e.message), false);
+  }
+}
+
+async function cancelTimeLimitRemoval(host) {
+  const key = (host && String(host).toLowerCase()) || "";
+  const m = { ...(typeof pendingTimeLimitRemovals === "object" && pendingTimeLimitRemovals ? pendingTimeLimitRemovals : {}) };
+  delete m[key];
+  for (const k of Object.keys(m)) {
+    if (k.toLowerCase() === key) delete m[k];
+  }
+  const out = Object.keys(m).length ? m : null;
+  setStatus("Remoção do limite de tempo de " + host + " cancelada. O teto de minutos continua a aplicar-se.", true);
+  try {
+    await chrome.storage.local.set({ [K.pendingTimeLimitRemovals]: out });
+    await load();
+    fireReschedule();
   } catch (e) {
     setStatus("Erro: " + (e && e.message), false);
   }
@@ -462,6 +534,7 @@ async function load() {
     "listTruncated",
     K.pendingDisableAt,
     K.pendingRemovals,
+    K.pendingTimeLimitRemovals,
     "pendingCooldownMinutes",
     S.siteTimeLimits,
     S.siteTimeUsage
@@ -472,6 +545,7 @@ async function load() {
   domains = sortArr(Array.isArray(raw) ? raw : []);
   pendingDisableAt = typeof d[K.pendingDisableAt] === "number" ? d[K.pendingDisableAt] : null;
   pendingRemovals = parsePendingRemovals(d[K.pendingRemovals]);
+  pendingTimeLimitRemovals = parsePendingRemovals(d[K.pendingTimeLimitRemovals]);
   siteTimeLimits = normalizeTimeLimitsPage(d[S.siteTimeLimits]);
   siteTimeUsage = parseTimeUsagePage(d[S.siteTimeUsage]);
   render();
@@ -581,14 +655,40 @@ el("formTimeLimit")?.addEventListener("submit", (e) => {
       setStatus("Indique entre " + TIME_MINS_MIN + " e " + TIME_MINS_MAX + " minutos por dia.", false);
       return;
     }
-    if (Object.keys(siteTimeLimits || {}).length >= 200) {
+    if (!siteTimeLimits[h] && Object.keys(siteTimeLimits || {}).length >= 200) {
       setStatus("Limite de 200 entradas (tempo). Remova uma para adicionar outra.", false);
       return;
+    }
+    const today = localDayKey();
+    const oldM = siteTimeLimits[h];
+    if (oldM != null && Number.isFinite(oldM) && m > oldM) {
+      const urec = siteTimeUsage && siteTimeUsage[h];
+      const used = urec && urec.day === today && typeof urec.usedMs === "number" ? urec.usedMs : 0;
+      const oldCapMs = oldM * 60 * 1000;
+      if (oldCapMs > 0 && used >= oldCapMs) {
+        setStatus(
+          "Hoje o tempo deste site já chegou ao limite. Não é possível subir o teto (min/dia) até amanhã; pode só baixar ou manter o mesmo limite.",
+          false
+        );
+        return;
+      }
     }
     setStatus("Salvando o limite…", true);
     try {
       const next = { ...siteTimeLimits, [h]: m };
-      await chrome.storage.local.set({ [S.siteTimeLimits]: next });
+      /** @type {Record<string, unknown>} */
+      const patch = { [S.siteTimeLimits]: next };
+      if (typeof pendingTimeLimitRemovals === "object" && pendingTimeLimitRemovals) {
+        const w = removalEndAt(pendingTimeLimitRemovals, h);
+        if (w != null && w > Date.now()) {
+          const ptr = { ...pendingTimeLimitRemovals };
+          for (const k of Object.keys(ptr)) {
+            if (k.toLowerCase() === h) delete ptr[k];
+          }
+          patch[K.pendingTimeLimitRemovals] = Object.keys(ptr).length > 0 ? ptr : null;
+        }
+      }
+      await chrome.storage.local.set(/** @type {Record<string, unknown>} */ (patch));
       if (el("timeLimitDomain")) el("timeLimitDomain").value = "";
       if (el("timeLimitMins")) el("timeLimitMins").value = "60";
       await new Promise((r) => {
@@ -673,6 +773,7 @@ chrome.storage.onChanged.addListener((c, a) => {
       c.listTruncated ||
       c[K.pendingDisableAt] ||
       c[K.pendingRemovals] ||
+      c[K.pendingTimeLimitRemovals] ||
       c.pendingCooldownMinutes ||
       c[S.siteTimeLimits] ||
       c[S.siteTimeUsage] ||

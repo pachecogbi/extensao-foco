@@ -1,8 +1,11 @@
-document.getElementById("openOpts").addEventListener("click", () => {
-  if (chrome.runtime && chrome.runtime.openOptionsPage) {
-    chrome.runtime.openOptionsPage();
-  }
-});
-document.getElementById("back").addEventListener("click", () => {
-  window.history.length > 1 && window.history.back();
-});
+/* global chrome, FocoCore */
+const $=(id)=>document.getElementById(id);const host=FocoCore.normalizeHost(new URLSearchParams(location.search).get("site"))||"site bloqueado";let session=null;let reflectionTick=null;
+function send(message){return new Promise(resolve=>chrome.runtime.sendMessage(message,response=>resolve(response||{ok:false})));}
+function clock(ms){const total=Math.max(0,Math.ceil(ms/1000));return Math.floor(total/60)+":"+String(total%60).padStart(2,"0");}
+async function init(){$("siteName").textContent=host;const result=await send({type:"recordBlockedAttempt",host});if(result&&result.count)$("attemptCount").textContent=result.count+"ª";const data=await chrome.storage.local.get(["focusSession","dailyStats"]);session=FocoCore.normalizeSession(data.focusSession);const active=session&&session.status==="active"&&!session.expired;if(active){$("focusContext").hidden=false;$("focusIntention").textContent=session.intention||"Concluir esta sessão";$("sessionRemaining").textContent=clock(session.endsAt-Date.now())+" restantes";$("focusContext").querySelector("b").textContent=session.deepMode?"Modo profundo ativo":"Sessão protegida";if(session.deepMode){$("requestPause").disabled=true;$("requestPause").textContent="Acesso indisponível no modo profundo";}}const stats=FocoCore.normalizeDailyStats(data.dailyStats)[FocoCore.localDayKey()]||{};$("todayFocus").textContent=Math.round(stats.focusMinutes||0)+" min";}
+$("goBack").addEventListener("click",()=>{if(history.length>1)history.back();else window.close();});
+$("openDashboard").addEventListener("click",()=>chrome.runtime.openOptionsPage());
+$("requestPause").addEventListener("click",()=>{if(session&&session.deepMode)return;$("requestPause").hidden=true;$("reflection").hidden=false;let seconds=10;$("reflectionTimer").textContent=seconds;reflectionTick=setInterval(()=>{seconds-=1;$("reflectionTimer").textContent=seconds;if(seconds<=0){clearInterval(reflectionTick);$("confirmPause").disabled=false;$("reflectionTimer").textContent="Agora você decide";}},1000);});
+$("cancelPause").addEventListener("click",()=>{clearInterval(reflectionTick);$("reflection").hidden=true;$("requestPause").hidden=false;});
+$("confirmPause").addEventListener("click",async()=>{const result=await send({type:"grantMindfulAllowance",host,minutes:5});if(!result.ok)return;location.replace("https://"+host);});
+void init();

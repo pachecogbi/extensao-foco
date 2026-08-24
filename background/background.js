@@ -1,3 +1,7 @@
+importScripts("../lib/foco-core.js");
+
+/* global FocoCore */
+
 /** Teto de regras dinâmicas (Manifest V3 / Chromium). */
 const DNR_MAX_DYNAMIC_RULES = 5000;
 const REBUILD_DEBOUNCE_MS = 200;
@@ -30,6 +34,16 @@ const K_SITE_TIME_USAGE = "siteTimeUsage";
  */
 const K_SITE_TIME_ACCRUE_SINCE = "siteTimeAccrueSinceByHost";
 const ALARM_SITE_TIME = "foco-site-time-usage";
+const ALARM_FOCUS_SESSION = "foco-focus-session-end";
+const ALARM_ALLOWANCE = "foco-mindful-allowance-end";
+
+const K_FOCUS_SESSION = "focusSession";
+const K_FOCUS_HISTORY = "focusHistory";
+const K_DAILY_STATS = "dailyStats";
+const K_DAILY_GOAL = "dailyFocusGoalMinutes";
+const K_TEMP_ALLOWANCES = "temporaryAllowances";
+const K_SCHEMA_VERSION = "schemaVersion";
+const SCHEMA_VERSION = 3;
 
 const LIM_TABS_MIN = 2;
 const LIM_TABS_MAX_CAP = 100;
@@ -38,15 +52,19 @@ const RES_TYPES = Object.freeze(["main_frame", "sub_frame"]);
 
 const SITE_TIME_MINS_MIN = 1;
 const SITE_TIME_MINS_MAX = 24 * 60;
+let statsMutationQueue = Promise.resolve();
+
+function enqueueStatsMutation(work) {
+  const next = statsMutationQueue.catch(() => {}).then(work);
+  statsMutationQueue = next.catch(() => {});
+  return next;
+}
 
 /**
  * @returns {string} Chave do dia local, ex. "2026-04-27"
  */
 function localDayKey() {
-  const d = new Date();
-  return (
-    d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0")
-  );
+  return FocoCore.localDayKey();
 }
 
 /**
@@ -55,11 +73,7 @@ function localDayKey() {
  * @returns {boolean}
  */
 function hostMatchesTimeLimitHost(tabHost, limitHost) {
-  if (!tabHost || !limitHost) return false;
-  const t = tabHost.toLowerCase();
-  const h = limitHost.toLowerCase();
-  if (h === t) return true;
-  return t === h || t.endsWith("." + h);
+  return FocoCore.hostMatches(tabHost, limitHost);
 }
 
 /**
@@ -267,9 +281,12 @@ function clampTabLimitCount(n) {
  * @returns {Promise<void>}
  */
 async function enforceTabLimitFromStorage() {
-  const s = await chrome.storage.local.get([K_TAB_LIMIT_ENABLED, K_TAB_LIMIT_MAX]);
-  if (s[K_TAB_LIMIT_ENABLED] !== true) return;
-  const max = clampTabLimitCount(s[K_TAB_LIMIT_MAX]);
+  const s = await chrome.storage.local.get([K_TAB_LIMIT_ENABLED, K_TAB_LIMIT_MAX, K_FOCUS_SESSION]);
+  const session = FocoCore.normalizeSession(s[K_FOCUS_SESSION]);
+  const sessionActive = session && session.status === "active" && !session.expired;
+  if (s[K_TAB_LIMIT_ENABLED] !== true && !sessionActive) return;
+  const configuredMax = clampTabLimitCount(s[K_TAB_LIMIT_MAX]);
+  const max = sessionActive ? Math.min(configuredMax, session.sessionTabLimit) : configuredMax;
   const tabs = await chrome.tabs.query({});
   if (tabs.length <= max) return;
   const byNewest = [...tabs].sort((a, b) => (b.id || 0) - (a.id || 0));
@@ -289,9 +306,12 @@ async function enforceTabLimitFromStorage() {
 function onTabCreatedForTabLimit(tab) {
   if (!tab || tab.id == null) return;
   void (async () => {
-    const s = await chrome.storage.local.get([K_TAB_LIMIT_ENABLED, K_TAB_LIMIT_MAX]);
-    if (s[K_TAB_LIMIT_ENABLED] !== true) return;
-    const max = clampTabLimitCount(s[K_TAB_LIMIT_MAX]);
+    const s = await chrome.storage.local.get([K_TAB_LIMIT_ENABLED, K_TAB_LIMIT_MAX, K_FOCUS_SESSION]);
+    const session = FocoCore.normalizeSession(s[K_FOCUS_SESSION]);
+    const sessionActive = session && session.status === "active" && !session.expired;
+    if (s[K_TAB_LIMIT_ENABLED] !== true && !sessionActive) return;
+    const configuredMax = clampTabLimitCount(s[K_TAB_LIMIT_MAX]);
+    const max = sessionActive ? Math.min(configuredMax, session.sessionTabLimit) : configuredMax;
     const all = await chrome.tabs.query({});
     if (all.length > max) {
       try {
@@ -326,7 +346,7 @@ function makeBlockRedirectRule(id, host) {
     priority: 1,
     action: {
       type: "redirect",
-      redirect: { extensionPath: "/ui/blocked/blocked.html" }
+      redirect: { url: chrome.runtime.getURL("ui/blocked/blocked.html") + "?site=" + encodeURIComponent(host) }
     },
     condition: {
       urlFilter: "||" + host + "^",
@@ -337,26 +357,7 @@ function makeBlockRedirectRule(id, host) {
 }
 
 function normalizeToHost(s) {
-  if (!s || typeof s !== "string") return null;
-  let t = s.trim();
-  if (!t) return null;
-  t = t.replace(/^\*\.?/, "");
-  t = t.replace(/[,;\s].*$/, "").trim();
-  if (t.toLowerCase() === "localhost" || t.includes("/") || t.includes("://")) {
-    try {
-      const u = t.includes("://") ? new URL(t) : new URL("http://" + t);
-      t = u.hostname;
-    } catch {
-      return null;
-    }
-  } else {
-    t = t.replace(/^[a-z+.-]+:\/\//i, "");
-    t = t.split("/")[0].split(":")[0];
-  }
-  t = t.toLowerCase();
-  if (!t || t.length > 253) return null;
-  if (!/^[a-z0-9.-]+$/i.test(t)) return null;
-  return t;
+  return FocoCore.normalizeHost(s);
 }
 
 function sortHosts(h) {
@@ -377,8 +378,11 @@ function rebuildFromStorage() {
 }
 
 async function rebuildFromStorageImpl() {
-  const s = await chrome.storage.local.get([STORAGE.blockingEnabled, STORAGE.userDomains, K_SITE_TIME_LIMITS, K_SITE_TIME_USAGE]);
+  const s = await chrome.storage.local.get([STORAGE.blockingEnabled, STORAGE.userDomains, K_SITE_TIME_LIMITS, K_SITE_TIME_USAGE, K_FOCUS_SESSION, K_TEMP_ALLOWANCES]);
   const blocking = s[STORAGE.blockingEnabled] !== false;
+  const session = FocoCore.normalizeSession(s[K_FOCUS_SESSION]);
+  const sessionActive = session && session.status === "active" && !session.expired;
+  const allowances = FocoCore.activeAllowances(s[K_TEMP_ALLOWANCES]);
   const userRaw = s[STORAGE.userDomains];
   const user = sortHosts(
     Array.from(new Set((userRaw || []).map(normalizeToHost).filter(Boolean)))
@@ -388,10 +392,19 @@ async function rebuildFromStorageImpl() {
   const uRaw = s[K_SITE_TIME_USAGE] && typeof s[K_SITE_TIME_USAGE] === "object" && !Array.isArray(s[K_SITE_TIME_USAGE]) ? s[K_SITE_TIME_USAGE] : {};
   const exhausted = hostsExhaustedToday(day, limits, /** @type {Record<string, { day: string, usedMs: number } | unknown>} */ (uRaw));
   const toBlock = new Set();
-  if (blocking) {
+  if (blocking || sessionActive) {
     for (const h of user) toBlock.add(h);
   }
   for (const h of exhausted) toBlock.add(h);
+  if (!sessionActive) {
+    for (const allowedHost of Object.keys(allowances)) {
+      for (const blockedHost of [...toBlock]) {
+        if (FocoCore.hostMatches(allowedHost, blockedHost) || FocoCore.hostMatches(blockedHost, allowedHost)) {
+          toBlock.delete(blockedHost);
+        }
+      }
+    }
+  }
   const blockList = sortHosts([...toBlock]);
 
   const remove = await getAllExtensionDynamicRuleIds();
@@ -439,6 +452,138 @@ function scheduleRebuild() {
     rebuildTimer = null;
     void rebuildFromStorage();
   }, REBUILD_DEBOUNCE_MS);
+}
+
+async function migrateStorage() {
+  const data = await chrome.storage.local.get([K_SCHEMA_VERSION, K_DAILY_GOAL, K_FOCUS_HISTORY, K_DAILY_STATS, K_TEMP_ALLOWANCES]);
+  if ((Number(data[K_SCHEMA_VERSION]) || 0) >= SCHEMA_VERSION) return;
+  const patch = { [K_SCHEMA_VERSION]: SCHEMA_VERSION };
+  if (data[K_DAILY_GOAL] == null) patch[K_DAILY_GOAL] = 50;
+  if (!Array.isArray(data[K_FOCUS_HISTORY])) patch[K_FOCUS_HISTORY] = [];
+  if (!data[K_DAILY_STATS] || typeof data[K_DAILY_STATS] !== "object") patch[K_DAILY_STATS] = {};
+  if (!data[K_TEMP_ALLOWANCES] || typeof data[K_TEMP_ALLOWANCES] !== "object") patch[K_TEMP_ALLOWANCES] = {};
+  await chrome.storage.local.set(patch);
+}
+
+async function updateActionBadge(sessionRaw) {
+  const session = FocoCore.normalizeSession(sessionRaw);
+  if (!session || session.status !== "active" || session.expired) {
+    await chrome.action.setBadgeText({ text: "" });
+    return;
+  }
+  await chrome.action.setBadgeBackgroundColor({ color: "#5f8f78" });
+  await chrome.action.setBadgeText({ text: "ON" });
+}
+
+async function scheduleFocusAlarm(sessionRaw) {
+  await chrome.alarms.clear(ALARM_FOCUS_SESSION);
+  const session = FocoCore.normalizeSession(sessionRaw);
+  if (!session || session.status !== "active") {
+    await updateActionBadge(null);
+    return;
+  }
+  if (session.endsAt <= Date.now()) {
+    await finishFocusSession("completed");
+    return;
+  }
+  await chrome.alarms.create(ALARM_FOCUS_SESSION, { when: session.endsAt });
+  await updateActionBadge(session);
+}
+
+function finishFocusSession(outcome) {
+  return enqueueStatsMutation(() => finishFocusSessionImpl(outcome));
+}
+
+async function finishFocusSessionImpl(outcome) {
+  const data = await chrome.storage.local.get([K_FOCUS_SESSION, K_FOCUS_HISTORY, K_DAILY_STATS]);
+  const session = FocoCore.normalizeSession(data[K_FOCUS_SESSION]);
+  if (!session || session.status !== "active") return { ok: false, reason: "no-active-session" };
+  const entry = FocoCore.finishSession(session, outcome, Date.now());
+  if (!entry) return { ok: false, reason: "invalid-session" };
+  const day = FocoCore.localDayKey(entry.startedAt);
+  const dailyStats = FocoCore.addDailyMetric(data[K_DAILY_STATS], day, {
+    focusMinutes: entry.focusedMinutes,
+    sessionsCompleted: entry.outcome === "completed" ? 1 : 0,
+    sessionsAbandoned: entry.outcome === "abandoned" ? 1 : 0
+  });
+  await chrome.storage.local.set({
+    [K_FOCUS_SESSION]: null,
+    [K_FOCUS_HISTORY]: FocoCore.appendHistory(data[K_FOCUS_HISTORY], entry),
+    [K_DAILY_STATS]: dailyStats
+  });
+  await chrome.alarms.clear(ALARM_FOCUS_SESSION);
+  await updateActionBadge(null);
+  await rebuildFromStorage();
+  await enforceTabLimitFromStorage();
+  return { ok: true, entry };
+}
+
+async function startFocusSession(input) {
+  const data = await chrome.storage.local.get(K_FOCUS_SESSION);
+  const existing = FocoCore.normalizeSession(data[K_FOCUS_SESSION]);
+  if (existing && existing.status === "active" && !existing.expired) {
+    return { ok: false, reason: "session-already-active", session: existing };
+  }
+  if (existing && existing.expired) await finishFocusSession("completed");
+  const session = FocoCore.createSession(input || {}, Date.now());
+  await chrome.storage.local.set({ [K_FOCUS_SESSION]: session });
+  await scheduleFocusAlarm(session);
+  await rebuildFromStorage();
+  await enforceTabLimitFromStorage();
+  return { ok: true, session };
+}
+
+function recordBlockedAttempt(hostValue) {
+  return enqueueStatsMutation(() => recordBlockedAttemptImpl(hostValue));
+}
+
+async function recordBlockedAttemptImpl(hostValue) {
+  const host = normalizeToHost(hostValue) || "desconhecido";
+  const data = await chrome.storage.local.get([K_DAILY_STATS, "blockedAttemptsByHost"]);
+  const day = localDayKey();
+  const byHost = data.blockedAttemptsByHost && typeof data.blockedAttemptsByHost === "object" ? { ...data.blockedAttemptsByHost } : {};
+  const todayHosts = byHost[day] && typeof byHost[day] === "object" ? { ...byHost[day] } : {};
+  todayHosts[host] = Math.max(0, Number(todayHosts[host]) || 0) + 1;
+  byHost[day] = todayHosts;
+  for (const key of Object.keys(byHost).sort().slice(0, -30)) delete byHost[key];
+  const stats = FocoCore.addDailyMetric(data[K_DAILY_STATS], day, { blockedAttempts: 1 });
+  await chrome.storage.local.set({ [K_DAILY_STATS]: stats, blockedAttemptsByHost: byHost });
+  return { ok: true, count: todayHosts[host] };
+}
+
+async function scheduleAllowanceAlarm(allowancesRaw) {
+  await chrome.alarms.clear(ALARM_ALLOWANCE);
+  const allowances = FocoCore.activeAllowances(allowancesRaw);
+  const ends = Object.values(allowances);
+  if (ends.length) await chrome.alarms.create(ALARM_ALLOWANCE, { when: Math.min(...ends) });
+}
+
+function grantMindfulAllowance(hostValue, minutes) {
+  return enqueueStatsMutation(() => grantMindfulAllowanceImpl(hostValue, minutes));
+}
+
+async function grantMindfulAllowanceImpl(hostValue, minutes) {
+  const host = normalizeToHost(hostValue);
+  if (!host) return { ok: false, reason: "invalid-host" };
+  const data = await chrome.storage.local.get([K_FOCUS_SESSION, K_TEMP_ALLOWANCES, K_DAILY_STATS]);
+  const session = FocoCore.normalizeSession(data[K_FOCUS_SESSION]);
+  if (session && session.status === "active" && !session.expired) return { ok: false, reason: "focus-session-active" };
+  const allowances = FocoCore.activeAllowances(data[K_TEMP_ALLOWANCES]);
+  const until = Date.now() + FocoCore.clampInt(minutes, 1, 15, 5) * 60000;
+  allowances[host] = until;
+  const stats = FocoCore.addDailyMetric(data[K_DAILY_STATS], localDayKey(), { mindfulPauses: 1 });
+  await chrome.storage.local.set({ [K_TEMP_ALLOWANCES]: allowances, [K_DAILY_STATS]: stats });
+  await scheduleAllowanceAlarm(allowances);
+  await rebuildFromStorage();
+  return { ok: true, until, host };
+}
+
+async function clearExpiredAllowances() {
+  const data = await chrome.storage.local.get(K_TEMP_ALLOWANCES);
+  const active = FocoCore.activeAllowances(data[K_TEMP_ALLOWANCES]);
+  await chrome.storage.local.set({ [K_TEMP_ALLOWANCES]: active });
+  await scheduleAllowanceAlarm(active);
+  await rebuildFromStorage();
 }
 
 /**
@@ -587,6 +732,10 @@ chrome.alarms.onAlarm.addListener((a) => {
       await accrueSiteTimeAndMaybeRebuild();
       await ensureSiteTimeAlarm();
     })();
+  } else if (a.name === ALARM_FOCUS_SESSION) {
+    void finishFocusSession("completed");
+  } else if (a.name === ALARM_ALLOWANCE) {
+    void clearExpiredAllowances();
   }
 });
 
@@ -605,32 +754,46 @@ chrome.runtime.onInstalled.addListener((details) => {
         [K_PENDING_TAB_LIMIT_DISABLE_AT]: null,
         [K_SITE_TIME_LIMITS]: {},
         [K_SITE_TIME_USAGE]: {},
-        [K_SITE_TIME_ACCRUE_SINCE]: null
+        [K_SITE_TIME_ACCRUE_SINCE]: null,
+        [K_FOCUS_SESSION]: null,
+        [K_FOCUS_HISTORY]: [],
+        [K_DAILY_STATS]: {},
+        [K_DAILY_GOAL]: 50,
+        [K_TEMP_ALLOWANCES]: {},
+        [K_SCHEMA_VERSION]: SCHEMA_VERSION
       });
     }
+    await migrateStorage();
     await processPendingIfDue();
     await accrueSiteTimeAndMaybeRebuild();
     await ensureSiteTimeAlarm();
     await rebuildFromStorage();
     await scheduleNextPendingAlarm();
+    const current = await chrome.storage.local.get([K_FOCUS_SESSION, K_TEMP_ALLOWANCES]);
+    await scheduleFocusAlarm(current[K_FOCUS_SESSION]);
+    await scheduleAllowanceAlarm(current[K_TEMP_ALLOWANCES]);
     await enforceTabLimitFromStorage();
   })();
 });
 
 chrome.runtime.onStartup.addListener(() => {
   void (async () => {
+    await migrateStorage();
     await processPendingIfDue();
     await accrueSiteTimeAndMaybeRebuild();
     await ensureSiteTimeAlarm();
     await scheduleNextPendingAlarm();
     await rebuildFromStorage();
+    const current = await chrome.storage.local.get([K_FOCUS_SESSION, K_TEMP_ALLOWANCES]);
+    await scheduleFocusAlarm(current[K_FOCUS_SESSION]);
+    await clearExpiredAllowances();
     await enforceTabLimitFromStorage();
   })();
 });
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== "local") return;
-  if (changes[STORAGE.blockingEnabled] || changes[STORAGE.userDomains] || changes[K_SITE_TIME_LIMITS]) {
+  if (changes[STORAGE.blockingEnabled] || changes[STORAGE.userDomains] || changes[K_SITE_TIME_LIMITS] || changes[K_FOCUS_SESSION] || changes[K_TEMP_ALLOWANCES]) {
     scheduleRebuild();
   }
   if (
@@ -641,12 +804,14 @@ chrome.storage.onChanged.addListener((changes, area) => {
   ) {
     void scheduleNextPendingAlarm();
   }
-  if (changes[K_TAB_LIMIT_ENABLED] || changes[K_TAB_LIMIT_MAX]) {
+  if (changes[K_TAB_LIMIT_ENABLED] || changes[K_TAB_LIMIT_MAX] || changes[K_FOCUS_SESSION]) {
     void enforceTabLimitFromStorage();
   }
   if (changes[K_SITE_TIME_LIMITS] || changes[K_SITE_TIME_ACCRUE_SINCE]) {
     void ensureSiteTimeAlarm();
   }
+  if (changes[K_FOCUS_SESSION]) void scheduleFocusAlarm(changes[K_FOCUS_SESSION].newValue);
+  if (changes[K_TEMP_ALLOWANCES]) void scheduleAllowanceAlarm(changes[K_TEMP_ALLOWANCES].newValue);
 });
 
 chrome.runtime.onMessage.addListener((message, _s, sendResponse) => {
@@ -668,14 +833,46 @@ chrome.runtime.onMessage.addListener((message, _s, sendResponse) => {
       .catch((e) => sendResponse({ error: String(e) }));
     return true;
   }
+  if (message && message.type === "startFocusSession") {
+    void startFocusSession(message.payload)
+      .then(sendResponse)
+      .catch((e) => sendResponse({ ok: false, error: String(e) }));
+    return true;
+  }
+  if (message && message.type === "finishFocusSession") {
+    void finishFocusSession(message.outcome === "completed" ? "completed" : "abandoned")
+      .then(sendResponse)
+      .catch((e) => sendResponse({ ok: false, error: String(e) }));
+    return true;
+  }
+  if (message && message.type === "recordBlockedAttempt") {
+    void recordBlockedAttempt(message.host)
+      .then(sendResponse)
+      .catch((e) => sendResponse({ ok: false, error: String(e) }));
+    return true;
+  }
+  if (message && message.type === "grantMindfulAllowance") {
+    void grantMindfulAllowance(message.host, message.minutes)
+      .then(sendResponse)
+      .catch((e) => sendResponse({ ok: false, error: String(e) }));
+    return true;
+  }
   return false;
 });
 
+chrome.commands.onCommand.addListener((command) => {
+  if (command === "open-focus-dashboard") void chrome.runtime.openOptionsPage();
+});
+
 void (async () => {
+  await migrateStorage();
   await processPendingIfDue();
   await accrueSiteTimeAndMaybeRebuild();
   await ensureSiteTimeAlarm();
   await scheduleNextPendingAlarm();
   await rebuildFromStorage();
+  const current = await chrome.storage.local.get([K_FOCUS_SESSION, K_TEMP_ALLOWANCES]);
+  await scheduleFocusAlarm(current[K_FOCUS_SESSION]);
+  await clearExpiredAllowances();
   await enforceTabLimitFromStorage();
 })();

@@ -1,28 +1,11 @@
-<!doctype html>
-<html lang="pt-BR">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Site bloqueado — Foco</title>
-    <link rel="stylesheet" href="blocked.css" />
-  </head>
-  <body>
-    <div class="page">
-      <div class="card" role="alert" aria-live="assertive">
-        <div class="illu" aria-hidden="true">🌿</div>
-        <h1>Ops! Este site está bloqueado</h1>
-        <p class="sub">
-          Este endereço pode ser da lista de bloqueio no Foco ou ter atingido o
-          <strong>limite de tempo</strong> deste site hoje. Se foi sem querer, você pode
-          ajustar nas opções da extensão.
-        </p>
-        <div class="actions">
-          <button type="button" class="primary" id="openOpts">Abrir opções do Foco</button>
-          <button type="button" class="secondary" id="back">Página anterior</button>
-        </div>
-        <p class="foot">Extensão <strong>Foco</strong> — concentre-se no que importa.</p>
-      </div>
-    </div>
-    <script src="blocked.js"></script>
-  </body>
-</html>
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Uma pausa — Foco</title><link rel="stylesheet" href="blocked.css"></head><body>
+  <main class="page"><section class="card">
+    <div class="mark">F</div><p class="kicker">Pausa consciente</p><h1>Você realmente quer estar aqui?</h1><p class="lead">Este pequeno intervalo quebra o piloto automático e devolve a decisão para você.</p>
+    <div class="site-chip"><span>↗</span><div><small>Você tentou abrir</small><strong id="siteName">este site</strong></div></div>
+    <section class="focus-context" id="focusContext" hidden><small>Sua intenção agora</small><blockquote id="focusIntention"></blockquote><div class="session-line"><span id="sessionRemaining"></span><b>Modo profundo ativo</b></div></section>
+    <section class="insight"><div><strong id="attemptCount">1ª</strong><span>tentativa hoje</span></div><div><strong id="todayFocus">0 min</strong><span>de foco hoje</span></div></section>
+    <button class="primary" id="goBack">Voltar ao que importa</button><button class="link" id="requestPause">Preciso acessar por 5 minutos</button>
+    <section class="reflection" id="reflection" hidden><p>Respire e confirme depois da contagem. O acesso será temporário.</p><strong id="reflectionTimer">10</strong><button id="confirmPause" disabled>Liberar por 5 minutos</button><button id="cancelPause">Cancelar</button></section>
+    <button class="dashboard" id="openDashboard">Abrir painel do Foco</button><p class="privacy">Tudo permanece neste navegador.</p>
+  </section></main><script src="../../lib/foco-core.js"></script><script src="blocked.js"></script>
+</body></html>

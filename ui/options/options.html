@@ -3,130 +3,111 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Foco — opções</title>
+    <title>Foco — painel de atenção</title>
     <link rel="stylesheet" href="options.css" />
   </head>
   <body>
-    <div class="page">
-      <div class="panel">
-        <header class="head head-app">
-          <a
-            class="btn-gear"
-            id="toSettings"
-            href="../settings/settings.html"
-            title="Mais opções (tempo de reflexão, etc.)"
-            aria-label="Configurações"
-            ><span class="visually-hidden">Configurações</span
-            ><svg
-              class="ic-gear"
-              width="22"
-              height="22"
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-              focusable="false"
-            >
-              <path
-                fill="currentColor"
-                d="M19.14 12.94c.04-.3.06-.62.06-.94 0-.32-.02-.64-.06-.94l1.99-1.26c.18-.11.25-.32.19-.5-.4-1.1-.98-2.1-1.7-2.99-.12-.16-.32-.2-.5-.1l-2.36 1.1c-.52-.4-1.08-.73-1.69-.98L14.1 2.1c-.04-.19-.2-.32-.4-.32h-2.4c-.2 0-.36.13-.4.32L10.25 4.1c-.61.25-1.17.58-1.69.98L6.2 3.99c-.18-.09-.38-.06-.5.1-.72.9-1.3 1.9-1.7 2.99-.05.19 0 .39.19.5L6 8.5c-.04.3-.07.64-.07.95s.03.65.07.95L4.01 11.5c-.18.11-.24.32-.19.5.4 1.1.98 2.1 1.7 2.99.12.16.32.2.5.1l2.36-1.1c.52.4 1.08.74 1.7.99L9.5 20.1c.04.19.2.32.4.32h2.4c.2 0 .35-.13.4-.32l.39-1.1c.62-.25 1.18-.58 1.7-.99l2.36 1.1c.19.1.38.06.5-.1.72-.9 1.3-1.9 1.7-2.99.05-.19 0-.39-.19-.5L19.14 12.94zM12 15.5A3.5 3.5 0 1 1 15.5 12a3.5 3.5 0 0 1-3.5 3.5z"
-              /></svg
-          ></a>
-          <h1 class="logo">Foco</h1>
-          <p class="tagline">Bloqueie sites e veja um aviso do Foco ao tentar acessá-los.</p>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <a class="brand" href="#today" aria-label="Foco, início"><span class="brand-mark">F</span><span>Foco</span></a>
+        <nav class="nav" aria-label="Navegação principal">
+          <button class="nav-item active" data-view="today"><span>◉</span> Hoje</button>
+          <button class="nav-item" data-view="distractions"><span>⊘</span> Distrações</button>
+          <button class="nav-item" data-view="insights"><span>↗</span> Progresso</button>
+        </nav>
+        <div class="sidebar-foot">
+          <p>Privado por padrão</p>
+          <span>Seus dados ficam neste navegador.</span>
+          <a href="../settings/settings.html">Configurações</a>
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div><p class="eyebrow" id="dateLabel"></p><h1 id="viewTitle">Sua atenção, hoje</h1></div>
+          <div class="protection-pill"><span id="protectionDot"></span><strong id="protectionText">Proteção ativa</strong></div>
         </header>
 
-        <section class="block card">
-          <h2 class="h2">Bloqueio</h2>
-          <label class="row-check">
-            <input type="checkbox" id="blockingEnabled" />
-            <span>Extensão ativa (bloquear conforme a lista abaixo)</span>
-          </label>
+        <section class="view active" id="view-today">
+          <div class="hero-grid">
+            <section class="focus-card" id="focusCard">
+              <div class="focus-copy">
+                <span class="section-kicker">Sessão de foco</span>
+                <h2 id="focusHeading">Qual é a única coisa que importa agora?</h2>
+                <p id="focusDescription">Defina uma intenção. Durante a sessão, suas distrações serão bloqueadas e o limite de abas ficará mais rígido.</p>
+              </div>
+
+              <form id="focusForm" class="focus-form" autocomplete="off">
+                <label for="focusIntention">Minha intenção</label>
+                <input id="focusIntention" maxlength="140" placeholder="Ex.: terminar a primeira versão do relatório" required />
+                <div class="preset-row" aria-label="Duração da sessão">
+                  <button type="button" data-duration="15">15 min</button>
+                  <button type="button" data-duration="25" class="selected">25 min</button>
+                  <button type="button" data-duration="50">50 min</button>
+                  <label class="custom-duration"><input id="focusDuration" type="number" min="5" max="180" value="25" /><span>min</span></label>
+                </div>
+                <div class="session-options">
+                  <label><input id="deepMode" type="checkbox" checked /> Modo profundo: sem pausas conscientes</label>
+                  <label>Máximo de abas <input id="sessionTabLimit" type="number" min="2" max="30" value="6" /></label>
+                </div>
+                <button class="btn btn-primary btn-large" type="submit">Começar sessão</button>
+              </form>
+
+              <div class="focus-running" id="focusRunning" hidden>
+                <div class="timer-ring" id="timerRing"><div><strong id="sessionTimer">25:00</strong><span>restantes</span></div></div>
+                <div class="running-copy"><span>Focando em</span><h3 id="sessionIntention"></h3><p id="sessionMeta"></p><button class="btn btn-quiet" id="finishSession" type="button">Encerrar antes</button></div>
+              </div>
+            </section>
+
+            <section class="progress-card">
+              <div class="card-head"><div><span class="section-kicker">Meta diária</span><h2>Consistência vence intensidade</h2></div><button class="icon-btn" id="editGoal" title="Editar meta" aria-label="Editar meta">✎</button></div>
+              <div class="goal-number"><strong id="todayMinutes">0</strong><span> / <b id="goalMinutes">50</b> min</span></div>
+              <div class="progress-track"><span id="goalProgress"></span></div>
+              <div class="goal-edit" id="goalEdit" hidden><input id="goalInput" type="number" min="5" max="600" value="50" /><button class="btn btn-small" id="saveGoal">Salvar</button></div>
+              <div class="mini-stats"><div><strong id="todaySessions">0</strong><span>sessões</span></div><div><strong id="todayBlocks">0</strong><span>impulsos evitados</span></div><div><strong id="streakValue">0</strong><span>dias de sequência</span></div></div>
+            </section>
+          </div>
+
+          <section class="activity-card">
+            <div class="card-head"><div><span class="section-kicker">Ritmo recente</span><h2>Últimos 7 dias</h2></div><button class="text-link" data-go="insights">Ver detalhes</button></div>
+            <div class="week-chart" id="weekChart" aria-label="Minutos de foco nos últimos sete dias"></div>
+          </section>
         </section>
 
-        <section class="card add-block" id="cardTimeLimit">
-          <h2 class="h2">Limite de tempo por site (cada dia)</h2>
-          <p class="help">
-            Defina quanto tempo (em minutos) você pode <strong>usar com abas abertas</strong> nesse site, por dia, no
-            fuso do seu equipamento. Ao atingir esse tempo, o site fica com a tela de bloqueio <strong>até o dia seguinte</strong>;
-            a contagem é zerada na meia-noite. Subdomínios (ex. <code>www</code>) entram.
-          </p>
-          <form class="form-add" id="formTimeLimit" autocomplete="off">
-            <input
-              type="text"
-              id="timeLimitDomain"
-              class="in"
-              placeholder="ex. youtube.com"
-              spellcheck="false"
-              inputmode="url"
-              aria-label="Domínio com limite de tempo"
-            />
-            <input
-              type="number"
-              id="timeLimitMins"
-              class="in"
-              min="1"
-              max="1440"
-              step="1"
-              value="60"
-              inputmode="numeric"
-              aria-label="Minutos por dia"
-              style="max-width: 5.5rem"
-            />
-            <span class="help" style="margin: 0 0.25rem; align-self: center">min/dia</span>
-            <button type="submit" class="btn primary">Definir limite</button>
-          </form>
+        <section class="view" id="view-distractions">
+          <div class="section-intro"><div><span class="section-kicker">Ambiente de foco</span><h2>Defina onde sua atenção costuma escapar</h2><p>Esta lista é usada pelo bloqueio geral e automaticamente por todas as sessões de foco.</p></div><label class="master-switch"><input id="blockingEnabled" type="checkbox" /><span></span><b id="blockingLabel">Bloqueio contínuo</b></label></div>
+
+          <div class="two-col">
+            <section class="surface">
+              <div class="card-head"><div><h3>Sites de distração</h3><p>Domínios e subdomínios serão cobertos.</p></div><span class="count-badge" id="domainCount">0</span></div>
+              <form class="inline-form" id="formAdd"><input id="newSite" placeholder="youtube.com ou URL completa" inputmode="url" /><button class="btn btn-primary">Adicionar</button></form>
+              <div class="empty-state" id="domainEmpty"><span>◎</span><h4>Sua lista está vazia</h4><p>Adicione os sites que mais interrompem seu trabalho.</p></div>
+              <ul class="item-list" id="domainList"></ul>
+            </section>
+
+            <section class="surface">
+              <div class="card-head"><div><h3>Orçamento diário</h3><p>Use com intenção antes do bloqueio automático.</p></div></div>
+              <form class="inline-form budget-form" id="formTimeLimit"><input id="timeLimitDomain" placeholder="instagram.com" inputmode="url" /><label><input id="timeLimitMins" type="number" min="1" max="1440" value="30" /><span>min/dia</span></label><button class="btn btn-primary">Definir</button></form>
+              <div class="empty-state" id="limitEmpty"><span>◷</span><h4>Nenhum orçamento definido</h4><p>Útil para sites que você não quer bloquear por completo.</p></div>
+              <ul class="item-list" id="limitList"></ul>
+            </section>
+          </div>
+          <section class="pending-card" id="pendingDisableCard" hidden><div><strong>Desativação em reflexão</strong><p>O bloqueio continua protegendo você até o fim da contagem.</p></div><strong id="disableTimer">05:00</strong><button class="btn btn-quiet" id="cancelDisable">Manter ativo</button></section>
         </section>
 
-        <section class="card list-block" id="listTimeLimit" hidden>
-          <h2 class="h2">Uso e limites</h2>
-          <p class="list-hint" id="timeLimitHint" hidden>
-            Só se aplica a sites com limite: você não precisa colocá-los na «lista de bloqueio» acima.
-          </p>
-          <p class="list-hint" id="timeListRemHint" hidden></p>
-          <p class="empty" id="emptyTimeList" hidden>Sem limites de tempo. Use o formulário acima.</p>
-          <ul class="list" id="timeListEl" role="list" hidden></ul>
+        <section class="view" id="view-insights">
+          <div class="stats-grid"><article><span>Foco nesta semana</span><strong id="weekMinutes">0 min</strong><small id="weekComparison">Comece sua primeira sessão.</small></article><article><span>Sessões concluídas</span><strong id="completedTotal">0</strong><small>nos últimos 7 dias</small></article><article><span>Impulsos interrompidos</span><strong id="blocksTotal">0</strong><small>tentativas de abrir distrações</small></article><article><span>Sequência atual</span><strong id="insightStreak">0 dias</strong><small>atingindo sua meta diária</small></article></div>
+          <div class="two-col insights-layout">
+            <section class="surface"><div class="card-head"><div><span class="section-kicker">Padrão semanal</span><h3>Minutos de foco</h3></div></div><div class="week-chart large" id="insightChart"></div></section>
+            <section class="surface"><div class="card-head"><div><span class="section-kicker">Gatilhos de distração</span><h3>Mais bloqueados hoje</h3></div></div><ol class="ranking" id="blockedRanking"></ol><div class="empty-state compact" id="rankingEmpty"><p>Nenhuma tentativa registrada hoje.</p></div></section>
+          </div>
+          <section class="surface history-surface"><div class="card-head"><div><span class="section-kicker">Memória de progresso</span><h3>Sessões recentes</h3></div></div><div class="history-list" id="historyList"></div></section>
         </section>
 
-        <section class="card pending-cooldown" id="boxPendingDisable" hidden>
-          <h2 class="h2 h2-pending">Desativação agendada</h2>
-          <p class="encouragement" id="encouragementDisable">
-            Respire. O impulso passa — manter o bloqueio por mais alguns minutos consolida o seu foco. Se ainda fizer
-            sentido, a desativação ocorre a seguir; você pode cancelar a qualquer momento.
-          </p>
-          <p class="countdown" id="disableCountdown" aria-live="polite">5:00</p>
-          <button type="button" class="btn wide" id="cancelPendingDisable">Manter a extensão ativa (cancelar)</button>
-        </section>
-
-        <section class="card add-block">
-          <h2 class="h2">Adicionar site</h2>
-          <p class="help">Indique o domínio (ex. <code>exemplo.com</code>) ou cole o URL completo — o nome do <strong>site</strong> é detectado sozinho.</p>
-          <form class="form-add" id="formAdd" autocomplete="off">
-            <input
-              type="text"
-              id="newSite"
-              class="in"
-              placeholder="ex. youtube.com"
-              spellcheck="false"
-              inputmode="url"
-              aria-label="Nome do site ou endereço"
-            />
-            <button type="submit" class="btn primary">Adicionar</button>
-          </form>
-        </section>
-
-        <section class="card list-block" id="listBlock">
-          <h2 class="h2">Sites bloqueados <span class="count" id="listCount" aria-hidden="true">(0)</span></h2>
-          <p class="list-hint" id="listRemHint" hidden></p>
-          <p class="empty" id="emptyList">Ainda não há sites na lista. Adicione um acima.</p>
-          <ul class="list" id="listEl" role="list" hidden></ul>
-        </section>
-
-        <p class="status" id="status" role="status" aria-live="polite"></p>
-        <p class="foot-meta" id="footMeta" hidden>
-          <span id="ruleStat"></span> · Limite do Chrome: 5000 regras. Com mais entradas, a lista é truncada.
-        </p>
-        <p class="warn" id="truncWarn" hidden></p>
-      </div>
+        <p class="toast" id="toast" role="status" aria-live="polite"></p>
+      </main>
     </div>
+    <script src="../../lib/foco-core.js"></script>
     <script src="../../lib/foco-cooldown.js"></script>
     <script src="options.js"></script>
   </body>

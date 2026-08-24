@@ -1,128 +1,106 @@
-<div align="center">
+# Foco 3.0
 
-# 🎯 Foco
+O **Foco** é um assistente local de atenção para navegadores Chromium. Ele combina sessões de foco, bloqueio consciente, orçamento diário de sites, limite de abas e métricas de progresso para ajudar a interromper hábitos automáticos de navegação.
 
-**Bloqueio consciente de sites no Google Chrome**  
-*Lista manual, fricção controlada e, se quiser, limite de tempo diário por site*
+Tudo funciona no navegador: sem conta, servidor ou telemetria.
 
----
+## O que há na versão 3.0
 
-✨ <kbd>Manifest V3</kbd> · <strong>v2.7.0</strong> · <em>🌐 Chrome (Chromium)</em> ✨
+### Sessões de foco integradas
 
-<br/>
+Antes de começar, o usuário registra uma intenção e escolhe uma duração entre 5 e 180 minutos. Durante a sessão:
 
-> *« Menos distração. Mais controle. »*
+- a lista de distrações é bloqueada mesmo que o bloqueio contínuo esteja desligado;
+- o limite de abas fica temporariamente mais rígido;
+- o popup e o painel exibem o tempo restante;
+- o modo profundo impede liberações temporárias;
+- o resultado é salvo no histórico e nas métricas diárias.
 
-</div>
+### Painel de atenção
 
-<br/>
+A antiga página de opções virou um painel com três áreas:
 
----
+- **Hoje:** sessão atual, meta diária, sequência e gráfico dos últimos sete dias;
+- **Distrações:** bloqueio contínuo, lista de sites e orçamento diário de tempo;
+- **Progresso:** minutos focados, sessões, tentativas bloqueadas, ranking de gatilhos e histórico.
 
-## ✨ O que é o Foco
+### Bloqueio consciente
 
-<div align="center">
-<img src="https://img.shields.io/badge/Extens%C3%A3o-Local%20%26%20sob%20seu%20controle-5E81AC?style=for-the-badge&logo=google-chrome&logoColor=white" alt="Extensão local" />
-</div>
+A tela de bloqueio agora mostra o site, a intenção da sessão, tempo restante, foco acumulado e número de tentativas naquele dia. Fora do modo profundo, o usuário pode solicitar uma liberação de cinco minutos depois de uma pausa obrigatória de dez segundos.
 
-<br/>
+### Recursos preservados
 
-O **Foco** é uma extensão para o navegador que, quando você **ativa**, deixa de mostrar a página dos **sites** que coloca na sua **lista pessoal de bloqueio** — ou cujo **limite de tempo diário** de uso você tiver atingido. No lugar, aparece uma tela própria (o *« Foco »*) em vez da página do site carregar normalmente.
+- bloqueio manual por domínio e subdomínio;
+- limite diário de 1 a 1.440 minutos por site;
+- tempo de reflexão para remover proteções;
+- limite global de 2 a 100 abas;
+- cancelamento de ações agendadas;
+- armazenamento exclusivamente local.
 
-| 🎁 Benefício | Descrição |
-|:---:|:---|
-| 🧠 | Serve para **reduzir distrações** *sem* listas genéricas da internet. |
-| 👤 | O que fica **afetado** é o que **você** define: **bloqueio completo** e/ou **minutos de uso** por dia e por domínio. |
+## Instalação
 
----
+1. Baixe ou clone este repositório.
+2. Abra `chrome://extensions`.
+3. Ative o **Modo do desenvolvedor**.
+4. Clique em **Carregar sem compactação**.
+5. Selecione a pasta que contém `manifest.json`.
 
-## 🛡️ O que a extensão faz
+Não há dependências ou etapa de compilação. Depois de editar o código, use **Recarregar** no cartão da extensão.
 
-| Recurso | Descrição |
-|:---:|:---|
-| 📝 **Lista manual** | Você adiciona **domínios** (nomes de **site**) no popup ou na página de configurações. Só o que está na lista é **afetado** quando o **bloqueio** da extensão está ligado. |
-| 🚧 **Bloqueio na prática** | Páginas nesses domínios (em janela ou *iframe*) são **interceptadas** e o Chrome mostra a tela **Foco** no lugar. |
-| 🔛 **Bloqueio liga / desliga** | Você pode ativar ou desativar a extensão; quando o bloqueio manual está desligado, a lista deixa de aplicar regras, **exceto** **sites** que já tenham **atingido o limite de tempo do dia** (veja a linha seguinte). |
-| ⏱️ **Limite de tempo por site (cada dia)** | Na página de configurações, você pode definir **X minutos por domínio e por dia** (1 a 24 h). O tempo avança **enquanto houver pelo menos uma aba** desse site aberta (fuso do equipamento; subdomínios, como `www`, entram). Ao **bater no teto**, o site fica **bloqueado** como os outros até **meia-noite** do dia seguinte, quando o contador **recomeça**. *Você não precisa* colocar o site na lista de bloqueio manual. |
-| 🧘 **Tempo de reflexão** | Se quiser **desligar** a extensão, **remover um site da lista** de bloqueio ou **desligar o limite de abas**, a ação de fato só acontece após **um intervalo com contagem regressiva** (o *« tempo de reflexão »*, configurável, **5 min** por padrão). Antes de acabar, você pode **desfazer** na mesma tela. |
-| 🔢 **Cada site, o seu contador (remoção da lista)** | A remoção de um **site** da lista de bloqueio pode ser agendada de forma **independente** por domínio, com o mesmo tipo de atraso. |
-| 📑 **Limite de abas** | Em **configurações** (ícone de engrenagem) você pode limitar o número de abas em **todas** as janelas (2 a 100), com ajuste e opção de desligar (também sujeito ao tempo de reflexão, ao **aplicar**). |
-| ⚙️ **Configurações** | A tela de **configurações** permite ajustar os **minutos** do tempo de reflexão, o **limite de abas** e, na página de opções principal, o **limite de tempo** por site — quando as condições permitirem (sem a extensão *« forçar »* a edição enquanto houver temporizadores **ativos**, conforme as regras no código). |
-| 📊 **Limite do Chrome** | Na prática, a combinação de regras de bloqueio manual + sites com tempo esgotado fica abaixo do teto de **cerca de 5000 regras** de rede dinâmicas. |
+## Uso rápido
 
----
+1. Abra o popup e escreva o que pretende concluir.
+2. Escolha 15, 25, 50 minutos ou uma duração personalizada.
+3. Inicie a sessão; as distrações cadastradas e o limite de abas entram em ação juntos.
+4. Abra o painel para configurar sites, orçamento diário e meta de foco.
+5. Use `Alt+Shift+F` para abrir o painel rapidamente.
 
-## 🚀 Como instalar (modo desenvolvedor)
+## Estrutura
 
-1. 📥 **Clone** ou **faça o download** deste repositório para uma pasta no seu computador.
-2. 🌐 **Abra** o Chrome (ou outro navegador baseado em Chromium) e acesse:  
-   [`chrome://extensions`](chrome://extensions)  
-3. 🛠️ **Ative** o *« Modo do desenvolvedor »* (canto superior direito).
-4. 📂 **Clique** em **« Carregar sem compactação »** (ou *Load unpacked*).
-5. 📁 **Selecione** a **pasta raiz** do projeto (onde está o `manifest.json`, com as pastas `background/`, `ui/`, `lib/`, `icons/`, etc.).
-6. ✅ **Confirme:** a extensão **Foco** deve surgir na lista, com o *fixar* opcional na barra de extensões.
+```text
+background/background.js   Service worker, regras, alarmes e sessões
+lib/foco-core.js           Regras determinísticas compartilhadas e testáveis
+lib/foco-cooldown.js       Política do tempo de reflexão
+ui/popup/                  Controle rápido de sessões
+ui/options/                Dashboard principal
+ui/blocked/                Intervenção exibida em sites bloqueados
+ui/settings/               Preferências globais
+tests/                     Testes com o test runner nativo do Node.js
+manifest.json              Manifest V3 e pontos de entrada
+```
 
-> **💡 Nota:** Se a pasta for movida depois, o navegador pode deixar de encontrá-la — use de novo *« Carregar sem compactação »* apontando para o novo caminho, ou reinstale a partir de um `.zip` com a mesma estrutura.
+## Desenvolvimento e testes
 
-### 🗂️ Estrutura do repositório
+O projeto usa JavaScript, HTML e CSS sem frameworks.
 
-O código está separado por função, com o `manifest.json` e os ícones na raiz:
+```bash
+node --test tests/*.test.js
+```
 
-| 📂 Local | 📦 Conteúdo |
-|:---:|:---|
-| **`background/`** | *Service worker* (`background.js`) — regras DNR, alarmes, limite de abas, contagem de tempo por site. |
-| **`lib/`** | Código compartilhado (p. ex. `foco-cooldown.js` carregado pelas páginas de UI). |
-| **`ui/blocked/`** | Página mostrada ao bloquear um site (`web_accessible_resources`). |
-| **`ui/options/`** | Página de opções (lista de bloqueio, limites de tempo). |
-| **`ui/popup/`** | *Popup* da ação da extensão. |
-| **`ui/settings/`** | Configurações (tempo de reflexão, limite de abas), com estilos compartilhados a partir de `ui/options/`. |
-| **`icons/`** | Ícones do *manifest*. |
+Também é possível verificar a sintaxe dos scripts com:
 
-As rotas no `manifest.json` e o `extensionPath` do DNR usam esses caminhos relativos à raiz da extensão (ex.: `ui/blocked/blocked.html`).
+```bash
+for file in background/background.js lib/*.js ui/*/*.js; do node --check "$file"; done
+```
 
----
+## Privacidade e permissões
 
-## 🎬 Uso rápido
+Os dados ficam em `chrome.storage.local`. A extensão não envia histórico, domínios, intenções ou métricas para serviços externos.
 
-1. **🖱️** **Clique** no **ícone do Foco** na barra: ligue o bloqueio e, se quiser, adicione um **site** pelo atalho do popup.
-2. **📋** Para a lista e os **limites de tempo** completos, abra a **página de opções** da extensão (menu do ícone do Foco → opções, ou atalho equivalente no Chrome).
-3. **⚙️** A **engrenagem** (no popup ou nessa página) leva a **configurações** (tempo de reflexão, limite de abas).
-4. **⏳** Para **desligar** o bloqueio geral com reflexão, **remover** domínios da lista com atraso ou ajustar **minutos de uso** por site, leia a mensagem na tela, **confira** os temporizadores e **cancele** se mudar de ideia.
+| Permissão | Uso |
+| --- | --- |
+| `declarativeNetRequest` | Aplicar redirecionamentos de bloqueio. |
+| `storage` | Persistir configurações, sessões e métricas. |
+| `alarms` | Encerrar sessões, contabilizar uso e aplicar ações pendentes. |
+| `tabs` | Contar tempo de sites e aplicar limites de abas. |
+| `<all_urls>` | Cobrir os domínios escolhidos pelo usuário. |
 
----
+## Compatibilidade
 
-## 🔐 Privacidade
+A atualização preserva as chaves anteriores (`userDomains`, `siteTimeLimits`, `siteTimeUsage`, cooldown e limite de abas). Uma migração aditiva cria apenas os campos novos; nenhuma lista ou configuração antiga é apagada.
 
-| | |
-|:---:|:---|
-| 🏠 | A lista de **sites**, o **limite de tempo** por domínio, o **uso do dia** e o restante das opções ficam em **`chrome.storage.local`**, no perfil do navegador. |
-| 👀 | A extensão **consulta as abas** (API `chrome.tabs`) só para contar o tempo de uso e o limite de abas, **sempre localmente**. |
-| ✈️ | **Nada disso é enviado a um servidor** desta extensão: não há contas nem telemetria forçada; o código é o que você vê no **projeto**. |
+Consulte [DOCUMENTACAO.md](DOCUMENTACAO.md) para detalhes de arquitetura, armazenamento e fluxos.
 
----
+## Licença
 
-## 🧩 Resumo técnico
-
-- **📜 Manifest V3** com *service worker* e **Declarative Net Request**: **redirecionamento** de requisições (`main_frame` e `sub_frame`) para [ui/blocked/blocked.html](ui/blocked/blocked.html) incluída na extensão; regras reconstruídas a partir de armazenamento local, com teto e fila de reconstrução no *background*.
-- **⏰ Alarms** do Chrome: atrasos de **desativação**, remoções pendentes, limite de abas e, para limites de **tempo por site**, lembrete de **1 minuto** que soma o uso.
-- **📅 Limites de tempo diários** (`siteTimeLimits`, `siteTimeUsage` e ponto de retomada de segmento no armazenamento) com contagem **enquanto houver** abas HTTP(S) correspondendo ao domínio, *reset* por **chave de dia** no fuso local, e união de domínios de bloqueio manual + domínios com **teto** de tempo atingido em um único `updateDynamicRules`.
-
----
-
-## 📄 Licença
-
-Use o código de acordo com a licença que o autor definir e associar a este repositório.
-
----
-
-<div align="center">
-
-### 🎯 Foco
-
-*Foco no que importa — o resto fica de fora (quando **você** decidir).*
-
-<br/>
-
-<sub>Feito com ☕ e intenção · README com ✨ e capricho</sub>
-
-</div>
+Este repositório ainda não possui uma licença definida.

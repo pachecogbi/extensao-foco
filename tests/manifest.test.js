@@ -12,6 +12,12 @@ test("manifest remains a valid Manifest V3 extension with existing entry points"
   for (const relativePath of paths) assert.equal(fs.existsSync(path.join(root, relativePath)), true, relativePath);
 });
 
+test("background adult-protection dependencies exist", () => {
+  for (const relativePath of ["data/adult-domains.js", "lib/adult-protection.js"]) {
+    assert.equal(fs.existsSync(path.join(root, relativePath)), true, relativePath);
+  }
+});
+
 test("every declared web accessible resource exists", () => {
   for (const group of manifest.web_accessible_resources) {
     for (const relativePath of group.resources) assert.equal(fs.existsSync(path.join(root, relativePath)), true, relativePath);

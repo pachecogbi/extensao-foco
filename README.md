@@ -1,6 +1,6 @@
 # Foco 3.0
 
-O **Foco** é um assistente local de atenção para navegadores Chromium. Ele combina sessões de foco, bloqueio consciente, orçamento diário de sites, limite de abas e métricas de progresso para ajudar a interromper hábitos automáticos de navegação.
+O **Foco** é um assistente local de atenção para navegadores Chromium. Ele combina sessões de foco, bloqueio consciente, proteção opcional contra conteúdo adulto, orçamento diário de sites, limite de abas e métricas de progresso para ajudar a interromper hábitos automáticos de navegação.
 
 Tudo funciona no navegador: sem conta, servidor ou telemetria.
 
@@ -37,6 +37,10 @@ A tela de bloqueio agora mostra o site, a intenção da sessão, tempo restante,
 - cancelamento de ações agendadas;
 - armazenamento exclusivamente local.
 
+### Proteção opcional contra conteúdo adulto
+
+Nas configurações, o usuário pode ativar uma proteção independente das sessões de foco. Ela bloqueia uma lista local de sites pornográficos conhecidos e força pesquisa segura no Google, Bing e DuckDuckGo. Depois de ativada, sua desativação exige uma espera fixa de 30 minutos e uma segunda confirmação; durante a espera, a proteção continua ativa e a solicitação pode ser cancelada.
+
 ## Instalação
 
 1. Baixe ou clone este repositório.
@@ -61,6 +65,8 @@ Não há dependências ou etapa de compilação. Depois de editar o código, use
 background/background.js   Service worker, regras, alarmes e sessões
 lib/foco-core.js           Regras determinísticas compartilhadas e testáveis
 lib/foco-cooldown.js       Política do tempo de reflexão
+lib/adult-protection.js    Estado e regras da proteção de conteúdo adulto
+data/adult-domains.js      Lista interna de domínios adultos conhecidos
 ui/popup/                  Controle rápido de sessões
 ui/options/                Dashboard principal
 ui/blocked/                Intervenção exibida em sites bloqueados
@@ -85,7 +91,7 @@ for file in background/background.js lib/*.js ui/*/*.js; do node --check "$file"
 
 ## Privacidade e permissões
 
-Os dados ficam em `chrome.storage.local`. A extensão não envia histórico, domínios, intenções ou métricas para serviços externos.
+Os dados ficam em `chrome.storage.local`. A extensão não envia histórico, domínios, intenções ou métricas para serviços externos. A lista de conteúdo adulto também é empacotada localmente, sem consultas remotas.
 
 | Permissão | Uso |
 | --- | --- |

@@ -24,6 +24,7 @@ Service worker responsável por:
 - iniciar e finalizar sessões;
 - aplicar limite global ou temporário de abas;
 - registrar tentativas bloqueadas e liberações conscientes;
+- compor bloqueios adultos e regras de SafeSearch quando a proteção estiver ativa;
 - migrar armazenamento antigo;
 - atualizar o badge durante uma sessão.
 
@@ -42,12 +43,20 @@ Concentra regras puras usadas pelo background e pelas interfaces:
 
 O arquivo expõe `FocoCore` no navegador e `module.exports` no Node.js, permitindo testes sem simular todas as APIs do Chrome.
 
+### Proteção de conteúdo adulto
+
+- `data/adult-domains.js` mantém a lista interna e versionada de domínios explicitamente adultos;
+- `lib/adult-protection.js` concentra as transições puras de ativação, espera e confirmação, a comparação de subdomínios e a construção das regras SafeSearch;
+- o background persiste o estado, agenda o alarme e inclui as regras no mesmo ciclo de reconstrução DNR já usado pelo projeto.
+
+A lista adulta não é adicionada a `userDomains`. Ela tem prioridade e motivo de bloqueio próprios, continua ativa sem sessão de foco e não é afetada por `temporaryAllowances`.
+
 ### Interfaces
 
 - `ui/popup`: início rápido, cronômetro, resumo diário e cadastro do site atual;
 - `ui/options`: dashboard com Hoje, Distrações e Progresso;
 - `ui/blocked`: intervenção consciente e acesso temporário controlado;
-- `ui/settings`: cooldown e limite global de abas.
+- `ui/settings`: cooldown, proteção de conteúdo adulto e limite global de abas.
 
 ## Estado e armazenamento
 
@@ -80,6 +89,9 @@ Todos os campos usam `chrome.storage.local`.
 | `dailyFocusGoalMinutes` | Meta diária, padrão de 50 minutos. |
 | `blockedAttemptsByHost` | Ranking por domínio dos últimos 30 dias. |
 | `temporaryAllowances` | Liberações conscientes ainda válidas. |
+| `adultContentBlockingEnabled` | Ativa a lista adulta e o SafeSearch; padrão `false`. |
+| `adultContentDisableRequestedAt` | Instante em que a desativação foi solicitada. |
+| `adultContentDisableAvailableAt` | Instante em que a confirmação passa a ser aceita. |
 
 ### Formato de sessão
 
@@ -142,6 +154,13 @@ A lista efetiva é a união de:
 
 Fora de uma sessão, liberações conscientes ainda válidas são removidas temporariamente dessa união. Durante qualquer sessão, a liberação é recusada; no modo profundo, a própria interface não oferece a ação.
 
+Quando `adultContentBlockingEnabled` está ativo, a reconstrução também adiciona:
+
+- regras de redirecionamento para a página bloqueada para cada domínio de `data/adult-domains.js`;
+- regras de transformação de busca para Google (`safe=active`), Bing (`adlt=strict`) e DuckDuckGo (`kp=1`).
+
+Essas regras independem de `blockingEnabled` e de `focusSession`. As regras adultas usam IDs e prioridade separados das regras comuns. Uma liberação consciente nunca remove essas regras, e o próprio handler de `grantMindfulAllowance` rejeita domínios adultos como segunda camada de proteção.
+
 ### Página bloqueada
 
 Cada regra inclui o domínio na URL da página interna. Ao carregar, a página envia `recordBlockedAttempt`, mostra contexto local e oferece:
@@ -149,6 +168,19 @@ Cada regra inclui o domínio na URL da página interna. Ao carregar, a página e
 - retorno imediato à página anterior;
 - abertura do painel;
 - fora do modo profundo, liberação por cinco minutos após dez segundos de reflexão.
+
+Regras adultas acrescentam `reason=adult` ao redirecionamento. Nesse caso, a mesma página mostra uma mensagem específica, não registra a tentativa como distração de foco e não oferece liberação temporária.
+
+### Desativação da proteção adulta
+
+1. A ativação limpa qualquer solicitação antiga e aplica imediatamente bloqueio e SafeSearch.
+2. Ao desmarcar a opção, o background grava os instantes de solicitação e disponibilidade, separados por 30 minutos.
+3. Um `chrome.alarms` persistente é criado para o instante de disponibilidade.
+4. Até esse instante, a proteção permanece integralmente ativa e a interface permite cancelar a solicitação.
+5. No fim da espera, o alarme não desliga nada: a interface passa a oferecer **Desativar proteção** e **Manter proteção**.
+6. A confirmação é validada novamente no background antes de alterar `adultContentBlockingEnabled` para `false`.
+
+Na inicialização e no reinício do navegador, o estado persistido é normalizado e o alarme futuro é recriado. Se a hora já passou, a confirmação fica disponível, mas a proteção continua ligada.
 
 ### Reinício e recuperação
 
@@ -164,7 +196,7 @@ No `onStartup`, `onInstalled` e na inicialização do service worker, o projeto:
 
 ## Migração e compatibilidade
 
-A migração verifica `schemaVersion`. Para instalações antigas, adiciona apenas valores padrão ausentes para meta, histórico, métricas e liberações. Os formatos anteriores continuam sendo lidos diretamente; não existe conversão destrutiva.
+A migração verifica `schemaVersion`, atualmente `4`. Para instalações antigas, adiciona apenas valores padrão ausentes para meta, histórico, métricas, liberações e proteção adulta. Os formatos anteriores continuam sendo lidos diretamente; não existe conversão destrutiva.
 
 ## Testes
 
@@ -174,7 +206,7 @@ Execute:
 node --test tests/*.test.js
 ```
 
-A suíte cobre normalização, subdomínios, limites de sessão, conclusão antecipada, métricas, expiração de liberações, sequência e integridade do manifesto.
+A suíte cobre normalização, subdomínios, limites de sessão, conclusão antecipada, métricas, expiração de liberações, sequência, integridade do manifesto, transições da proteção adulta e regras SafeSearch.
 
 ## Limitações conhecidas
 
@@ -183,6 +215,8 @@ A suíte cobre normalização, subdomínios, limites de sessão, conclusão ante
 - Sessões encerradas por desligamento abrupto são concluídas na próxima ativação do service worker quando o horário final já passou.
 - A liberação consciente retorna para a raiz HTTPS do domínio, pois o DNR não preserva o caminho original neste fluxo.
 - Não há testes end-to-end automatizados dentro de uma instância real do Chrome; a validação automatizada atual cobre regras puras, sintaxe e estrutura do manifesto.
+- A lista adulta inicial é deliberadamente limitada e pode não cobrir sites novos, espelhos, conteúdo sexual hospedado em plataformas gerais ou acesso por endereço IP.
+- SafeSearch reduz resultados explícitos nos mecanismos cobertos, mas não substitui controles do próprio navegador, DNS ou sistema operacional.
 
 ## Próximas evoluções sugeridas
 

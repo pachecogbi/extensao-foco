@@ -1,4 +1,4 @@
-/* global focoCanEditCooldownSetting, focoGetPendingCooldownMinutes, focoSetPendingCooldownMinutes */
+/* global focoCanEditCooldownSetting, focoGetPendingCooldownMinutes, focoSetPendingCooldownMinutes, FocoAdultProtection */
 /* global chrome */
 
 const el = (id) => document.getElementById(id);
@@ -9,11 +9,15 @@ const S = {
 };
 
 const K = {
-  pendingTabLimitDisableAt: "pendingTabLimitDisableAt"
+  pendingTabLimitDisableAt: "pendingTabLimitDisableAt",
+  adultEnabled: "adultContentBlockingEnabled",
+  adultDisableRequestedAt: "adultContentDisableRequestedAt",
+  adultDisableAvailableAt: "adultContentDisableAvailableAt"
 };
 
 let pendingTabLimitAt = null;
 let featureTick = null;
+let adultProtectionState = FocoAdultProtection.normalizeState(null);
 
 function formatRemainingMs(ms) {
   if (ms < 0) ms = 0;
@@ -48,6 +52,27 @@ function updateFeaturePendUis() {
       boxTab.hidden = true;
     }
   }
+  renderAdultProtection();
+}
+
+function renderAdultProtection() {
+  const input = el("adultContentBlockingEnabled");
+  const pending = el("adultDisablePending");
+  const waiting = el("adultWaiting");
+  const ready = el("adultReady");
+  const countdown = el("adultDisableCountdown");
+  const status = el("adultProtectionStatus");
+  const requested = adultProtectionState.enabled && adultProtectionState.disableAvailableAt !== null;
+  const canDisable = FocoAdultProtection.canDisable(adultProtectionState, Date.now());
+  input.checked = adultProtectionState.enabled;
+  pending.hidden = !requested;
+  waiting.hidden = !requested || canDisable;
+  ready.hidden = !canDisable;
+  if (requested && !canDisable) countdown.textContent = formatRemainingMs(adultProtectionState.disableAvailableAt - Date.now());
+  if (!adultProtectionState.enabled) status.textContent = "Proteção desativada.";
+  else if (canDisable) status.textContent = "A espera terminou; a proteção permanece ativa até sua confirmação.";
+  else if (requested) status.textContent = "A proteção permanece ativa durante toda a espera.";
+  else status.textContent = "Proteção ativa, inclusive fora das sessões de foco.";
 }
 
 function startFeatureTick() {
@@ -55,16 +80,18 @@ function startFeatureTick() {
     clearInterval(featureTick);
     featureTick = null;
   }
-  if (!hasTabLimitPending()) return;
+  const adultWaiting = adultProtectionState.enabled && adultProtectionState.disableAvailableAt !== null && !FocoAdultProtection.canDisable(adultProtectionState, Date.now());
+  if (!hasTabLimitPending() && !adultWaiting) return;
   const step = () => {
-    if (!hasTabLimitPending()) {
+    updateFeaturePendUis();
+    const keepAdultTicking = adultProtectionState.enabled && adultProtectionState.disableAvailableAt !== null && !FocoAdultProtection.canDisable(adultProtectionState, Date.now());
+    if (!hasTabLimitPending() && !keepAdultTicking) {
       if (featureTick) {
         clearInterval(featureTick);
         featureTick = null;
       }
       return;
     }
-    updateFeaturePendUis();
   };
   step();
   featureTick = setInterval(step, 1000);
@@ -84,7 +111,10 @@ async function loadFeaturePends() {
   const d = await chrome.storage.local.get([
     S.tabLimitEnabled,
     S.tabLimitMax,
-    K.pendingTabLimitDisableAt
+    K.pendingTabLimitDisableAt,
+    K.adultEnabled,
+    K.adultDisableRequestedAt,
+    K.adultDisableAvailableAt
   ]);
   if (el("tabLimitEnabled")) {
     el("tabLimitEnabled").checked = d[S.tabLimitEnabled] === true;
@@ -93,8 +123,22 @@ async function loadFeaturePends() {
     el("tabLimitMax").value = String(clampTabMax(d[S.tabLimitMax] != null ? d[S.tabLimitMax] : 8));
   }
   pendingTabLimitAt = typeof d[K.pendingTabLimitDisableAt] === "number" ? d[K.pendingTabLimitDisableAt] : null;
+  adultProtectionState = FocoAdultProtection.normalizeState({
+    enabled: d[K.adultEnabled],
+    disableRequestedAt: d[K.adultDisableRequestedAt],
+    disableAvailableAt: d[K.adultDisableAvailableAt]
+  });
   updateFeaturePendUis();
   startFeatureTick();
+}
+
+function changeAdultProtection(action) {
+  return new Promise((resolve) => {
+    chrome.runtime.sendMessage({ type: "changeAdultProtection", action }, (response) => {
+      if (chrome.runtime.lastError) resolve({ ok: false, error: chrome.runtime.lastError.message });
+      else resolve(response || { ok: false });
+    });
+  });
 }
 
 function lockText(g) {
@@ -233,6 +277,38 @@ el("cancelPendingTabLimit")?.addEventListener("click", () => {
   })();
 });
 
+el("adultContentBlockingEnabled")?.addEventListener("change", (event) => {
+  const input = event.target;
+  if (!input || input.type !== "checkbox") return;
+  void (async () => {
+    input.checked = adultProtectionState.enabled;
+    const action = adultProtectionState.enabled ? "request-disable" : "activate";
+    const result = await changeAdultProtection(action);
+    if (!result.ok) {
+      el("adultProtectionStatus").textContent = "Não foi possível alterar a proteção.";
+      await loadFeaturePends();
+      return;
+    }
+    await loadFeaturePends();
+  })();
+});
+
+el("cancelAdultDisable")?.addEventListener("click", () => {
+  void (async () => { await changeAdultProtection("cancel-disable"); await loadFeaturePends(); })();
+});
+
+el("keepAdultProtection")?.addEventListener("click", () => {
+  void (async () => { await changeAdultProtection("cancel-disable"); await loadFeaturePends(); })();
+});
+
+el("confirmAdultDisable")?.addEventListener("click", () => {
+  void (async () => {
+    const result = await changeAdultProtection("confirm-disable");
+    el("adultProtectionStatus").textContent = result.ok ? "Proteção desativada." : "A espera de 30 minutos ainda não terminou.";
+    await loadFeaturePends();
+  })();
+});
+
 chrome.storage.onChanged.addListener((c, a) => {
   if (a === "local") {
     if (
@@ -243,7 +319,10 @@ chrome.storage.onChanged.addListener((c, a) => {
       c.pendingCooldownMinutes ||
       c.pendingTabLimitDisableAt ||
       c.tabLimitEnabled ||
-      c.tabLimitMax
+      c.tabLimitMax ||
+      c.adultContentBlockingEnabled ||
+      c.adultContentDisableRequestedAt ||
+      c.adultContentDisableAvailableAt
     ) {
       void refresh();
     }

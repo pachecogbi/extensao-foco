@@ -1,6 +1,6 @@
-importScripts("../lib/foco-core.js");
+importScripts("../lib/foco-core.js", "../data/adult-domains.js", "../lib/adult-protection.js");
 
-/* global FocoCore */
+/* global FocoCore, FocoAdultDomains, FocoAdultProtection */
 
 /** Teto de regras dinâmicas (Manifest V3 / Chromium). */
 const DNR_MAX_DYNAMIC_RULES = 5000;
@@ -36,6 +36,7 @@ const K_SITE_TIME_ACCRUE_SINCE = "siteTimeAccrueSinceByHost";
 const ALARM_SITE_TIME = "foco-site-time-usage";
 const ALARM_FOCUS_SESSION = "foco-focus-session-end";
 const ALARM_ALLOWANCE = "foco-mindful-allowance-end";
+const ALARM_ADULT_DISABLE_READY = "foco-adult-disable-ready";
 
 const K_FOCUS_SESSION = "focusSession";
 const K_FOCUS_HISTORY = "focusHistory";
@@ -43,7 +44,10 @@ const K_DAILY_STATS = "dailyStats";
 const K_DAILY_GOAL = "dailyFocusGoalMinutes";
 const K_TEMP_ALLOWANCES = "temporaryAllowances";
 const K_SCHEMA_VERSION = "schemaVersion";
-const SCHEMA_VERSION = 3;
+const K_ADULT_ENABLED = "adultContentBlockingEnabled";
+const K_ADULT_DISABLE_REQUESTED_AT = "adultContentDisableRequestedAt";
+const K_ADULT_DISABLE_AVAILABLE_AT = "adultContentDisableAvailableAt";
+const SCHEMA_VERSION = 4;
 
 const LIM_TABS_MIN = 2;
 const LIM_TABS_MAX_CAP = 100;
@@ -53,6 +57,7 @@ const RES_TYPES = Object.freeze(["main_frame", "sub_frame"]);
 const SITE_TIME_MINS_MIN = 1;
 const SITE_TIME_MINS_MAX = 24 * 60;
 let statsMutationQueue = Promise.resolve();
+let adultMutationQueue = Promise.resolve();
 
 function enqueueStatsMutation(work) {
   const next = statsMutationQueue.catch(() => {}).then(work);
@@ -340,13 +345,13 @@ chrome.tabs.onActivated.addListener(() => {
 let rebuildTimer = null;
 let rebuildDnrQueue = Promise.resolve();
 
-function makeBlockRedirectRule(id, host) {
+function makeBlockRedirectRule(id, host, reason) {
   return {
     id,
-    priority: 1,
+    priority: reason === "adult" ? 2 : 1,
     action: {
       type: "redirect",
-      redirect: { url: chrome.runtime.getURL("ui/blocked/blocked.html") + "?site=" + encodeURIComponent(host) }
+      redirect: { url: chrome.runtime.getURL("ui/blocked/blocked.html") + "?site=" + encodeURIComponent(host) + "&reason=" + encodeURIComponent(reason || "focus") }
     },
     condition: {
       urlFilter: "||" + host + "^",
@@ -378,7 +383,7 @@ function rebuildFromStorage() {
 }
 
 async function rebuildFromStorageImpl() {
-  const s = await chrome.storage.local.get([STORAGE.blockingEnabled, STORAGE.userDomains, K_SITE_TIME_LIMITS, K_SITE_TIME_USAGE, K_FOCUS_SESSION, K_TEMP_ALLOWANCES]);
+  const s = await chrome.storage.local.get([STORAGE.blockingEnabled, STORAGE.userDomains, K_SITE_TIME_LIMITS, K_SITE_TIME_USAGE, K_FOCUS_SESSION, K_TEMP_ALLOWANCES, K_ADULT_ENABLED]);
   const blocking = s[STORAGE.blockingEnabled] !== false;
   const session = FocoCore.normalizeSession(s[K_FOCUS_SESSION]);
   const sessionActive = session && session.status === "active" && !session.expired;
@@ -406,10 +411,15 @@ async function rebuildFromStorageImpl() {
     }
   }
   const blockList = sortHosts([...toBlock]);
+  const adultEnabled = s[K_ADULT_ENABLED] === true;
+  const adultHosts = adultEnabled
+    ? sortHosts(Array.from(new Set(FocoAdultDomains.map(normalizeToHost).filter(Boolean))))
+    : [];
 
   const remove = await getAllExtensionDynamicRuleIds();
   const toAdd = [];
-  if (blockList.length === 0) {
+  const safeSearchRules = adultEnabled ? FocoAdultProtection.createSafeSearchRules(100000) : [];
+  if (blockList.length === 0 && adultHosts.length === 0 && safeSearchRules.length === 0) {
     if (remove.length) {
       await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: remove });
     }
@@ -421,18 +431,19 @@ async function rebuildFromStorageImpl() {
   const cap = DNR_MAX_DYNAMIC_RULES;
   let n = 1;
   for (const host of blockList) {
-    if (n > cap) break;
-    toAdd.push(makeBlockRedirectRule(n, host));
+    if (toAdd.length >= cap - adultHosts.length - safeSearchRules.length) break;
+    toAdd.push(makeBlockRedirectRule(n, host, "focus"));
     n += 1;
   }
-  if (remove.length > 0) {
-    await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: remove });
+  let adultRuleId = 50001;
+  for (const host of adultHosts) {
+    if (toAdd.length >= cap - safeSearchRules.length) break;
+    toAdd.push(makeBlockRedirectRule(adultRuleId++, host, "adult"));
   }
-  if (toAdd.length > 0) {
-    await chrome.declarativeNetRequest.updateDynamicRules({ addRules: toAdd });
-  }
+  toAdd.push(...safeSearchRules.slice(0, Math.max(0, cap - toAdd.length)));
+  await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: remove, addRules: toAdd });
   const applied = toAdd.length;
-  const missed = blockList.length - applied;
+  const missed = blockList.length + adultHosts.length + safeSearchRules.length - applied;
   if (missed > 0) {
     await chrome.storage.local.set({
       listTruncated: { userMissed: missed }
@@ -455,13 +466,16 @@ function scheduleRebuild() {
 }
 
 async function migrateStorage() {
-  const data = await chrome.storage.local.get([K_SCHEMA_VERSION, K_DAILY_GOAL, K_FOCUS_HISTORY, K_DAILY_STATS, K_TEMP_ALLOWANCES]);
+  const data = await chrome.storage.local.get([K_SCHEMA_VERSION, K_DAILY_GOAL, K_FOCUS_HISTORY, K_DAILY_STATS, K_TEMP_ALLOWANCES, K_ADULT_ENABLED, K_ADULT_DISABLE_REQUESTED_AT, K_ADULT_DISABLE_AVAILABLE_AT]);
   if ((Number(data[K_SCHEMA_VERSION]) || 0) >= SCHEMA_VERSION) return;
   const patch = { [K_SCHEMA_VERSION]: SCHEMA_VERSION };
   if (data[K_DAILY_GOAL] == null) patch[K_DAILY_GOAL] = 50;
   if (!Array.isArray(data[K_FOCUS_HISTORY])) patch[K_FOCUS_HISTORY] = [];
   if (!data[K_DAILY_STATS] || typeof data[K_DAILY_STATS] !== "object") patch[K_DAILY_STATS] = {};
   if (!data[K_TEMP_ALLOWANCES] || typeof data[K_TEMP_ALLOWANCES] !== "object") patch[K_TEMP_ALLOWANCES] = {};
+  if (data[K_ADULT_ENABLED] !== true && data[K_ADULT_ENABLED] !== false) patch[K_ADULT_ENABLED] = false;
+  if (data[K_ADULT_DISABLE_REQUESTED_AT] == null) patch[K_ADULT_DISABLE_REQUESTED_AT] = null;
+  if (data[K_ADULT_DISABLE_AVAILABLE_AT] == null) patch[K_ADULT_DISABLE_AVAILABLE_AT] = null;
   await chrome.storage.local.set(patch);
 }
 
@@ -565,7 +579,10 @@ function grantMindfulAllowance(hostValue, minutes) {
 async function grantMindfulAllowanceImpl(hostValue, minutes) {
   const host = normalizeToHost(hostValue);
   if (!host) return { ok: false, reason: "invalid-host" };
-  const data = await chrome.storage.local.get([K_FOCUS_SESSION, K_TEMP_ALLOWANCES, K_DAILY_STATS]);
+  const data = await chrome.storage.local.get([K_FOCUS_SESSION, K_TEMP_ALLOWANCES, K_DAILY_STATS, K_ADULT_ENABLED]);
+  if (!FocoAdultProtection.canGrantTemporaryAllowance(data[K_ADULT_ENABLED], host, FocoAdultDomains)) {
+    return { ok: false, reason: "adult-content-protected" };
+  }
   const session = FocoCore.normalizeSession(data[K_FOCUS_SESSION]);
   if (session && session.status === "active" && !session.expired) return { ok: false, reason: "focus-session-active" };
   const allowances = FocoCore.activeAllowances(data[K_TEMP_ALLOWANCES]);
@@ -584,6 +601,66 @@ async function clearExpiredAllowances() {
   await chrome.storage.local.set({ [K_TEMP_ALLOWANCES]: active });
   await scheduleAllowanceAlarm(active);
   await rebuildFromStorage();
+}
+
+function adultStateFromStorage(data) {
+  return FocoAdultProtection.normalizeState({
+    enabled: data[K_ADULT_ENABLED],
+    disableRequestedAt: data[K_ADULT_DISABLE_REQUESTED_AT],
+    disableAvailableAt: data[K_ADULT_DISABLE_AVAILABLE_AT]
+  });
+}
+
+function adultStatePatch(state) {
+  return {
+    [K_ADULT_ENABLED]: state.enabled,
+    [K_ADULT_DISABLE_REQUESTED_AT]: state.disableRequestedAt,
+    [K_ADULT_DISABLE_AVAILABLE_AT]: state.disableAvailableAt
+  };
+}
+
+async function getAdultProtectionState() {
+  const data = await chrome.storage.local.get([
+    K_ADULT_ENABLED,
+    K_ADULT_DISABLE_REQUESTED_AT,
+    K_ADULT_DISABLE_AVAILABLE_AT
+  ]);
+  return adultStateFromStorage(data);
+}
+
+async function scheduleAdultDisableAlarm(stateRaw) {
+  await chrome.alarms.clear(ALARM_ADULT_DISABLE_READY);
+  const state = FocoAdultProtection.normalizeState(stateRaw);
+  if (state.enabled && state.disableAvailableAt && state.disableAvailableAt > Date.now()) {
+    await chrome.alarms.create(ALARM_ADULT_DISABLE_READY, { when: state.disableAvailableAt });
+  }
+}
+
+function changeAdultProtection(action) {
+  const next = adultMutationQueue.catch(() => {}).then(() => changeAdultProtectionImpl(action));
+  adultMutationQueue = next.catch(() => {});
+  return next;
+}
+
+async function changeAdultProtectionImpl(action) {
+  const current = await getAdultProtectionState();
+  let result;
+  if (action === "activate") {
+    result = { ok: true, reason: "activated", state: FocoAdultProtection.activate() };
+  } else if (action === "request-disable") {
+    result = FocoAdultProtection.requestDisable(current, Date.now());
+  } else if (action === "cancel-disable") {
+    result = { ok: true, reason: "cancelled", state: FocoAdultProtection.cancelDisable(current) };
+  } else if (action === "confirm-disable") {
+    result = FocoAdultProtection.confirmDisable(current, Date.now());
+  } else {
+    return { ok: false, reason: "invalid-action", state: current };
+  }
+  if (!result.ok) return result;
+  await chrome.storage.local.set(adultStatePatch(result.state));
+  await scheduleAdultDisableAlarm(result.state);
+  await rebuildFromStorage();
+  return result;
 }
 
 /**
@@ -736,6 +813,9 @@ chrome.alarms.onAlarm.addListener((a) => {
     void finishFocusSession("completed");
   } else if (a.name === ALARM_ALLOWANCE) {
     void clearExpiredAllowances();
+  } else if (a.name === ALARM_ADULT_DISABLE_READY) {
+    // A espera apenas libera a confirmação manual; nunca desativa a proteção.
+    void getAdultProtectionState().then(scheduleAdultDisableAlarm);
   }
 });
 
@@ -760,6 +840,9 @@ chrome.runtime.onInstalled.addListener((details) => {
         [K_DAILY_STATS]: {},
         [K_DAILY_GOAL]: 50,
         [K_TEMP_ALLOWANCES]: {},
+        [K_ADULT_ENABLED]: false,
+        [K_ADULT_DISABLE_REQUESTED_AT]: null,
+        [K_ADULT_DISABLE_AVAILABLE_AT]: null,
         [K_SCHEMA_VERSION]: SCHEMA_VERSION
       });
     }
@@ -772,6 +855,7 @@ chrome.runtime.onInstalled.addListener((details) => {
     const current = await chrome.storage.local.get([K_FOCUS_SESSION, K_TEMP_ALLOWANCES]);
     await scheduleFocusAlarm(current[K_FOCUS_SESSION]);
     await scheduleAllowanceAlarm(current[K_TEMP_ALLOWANCES]);
+    await scheduleAdultDisableAlarm(await getAdultProtectionState());
     await enforceTabLimitFromStorage();
   })();
 });
@@ -787,13 +871,14 @@ chrome.runtime.onStartup.addListener(() => {
     const current = await chrome.storage.local.get([K_FOCUS_SESSION, K_TEMP_ALLOWANCES]);
     await scheduleFocusAlarm(current[K_FOCUS_SESSION]);
     await clearExpiredAllowances();
+    await scheduleAdultDisableAlarm(await getAdultProtectionState());
     await enforceTabLimitFromStorage();
   })();
 });
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== "local") return;
-  if (changes[STORAGE.blockingEnabled] || changes[STORAGE.userDomains] || changes[K_SITE_TIME_LIMITS] || changes[K_FOCUS_SESSION] || changes[K_TEMP_ALLOWANCES]) {
+  if (changes[STORAGE.blockingEnabled] || changes[STORAGE.userDomains] || changes[K_SITE_TIME_LIMITS] || changes[K_FOCUS_SESSION] || changes[K_TEMP_ALLOWANCES] || changes[K_ADULT_ENABLED]) {
     scheduleRebuild();
   }
   if (
@@ -812,6 +897,9 @@ chrome.storage.onChanged.addListener((changes, area) => {
   }
   if (changes[K_FOCUS_SESSION]) void scheduleFocusAlarm(changes[K_FOCUS_SESSION].newValue);
   if (changes[K_TEMP_ALLOWANCES]) void scheduleAllowanceAlarm(changes[K_TEMP_ALLOWANCES].newValue);
+  if (changes[K_ADULT_ENABLED] || changes[K_ADULT_DISABLE_REQUESTED_AT] || changes[K_ADULT_DISABLE_AVAILABLE_AT]) {
+    void getAdultProtectionState().then(scheduleAdultDisableAlarm);
+  }
 });
 
 chrome.runtime.onMessage.addListener((message, _s, sendResponse) => {
@@ -857,6 +945,12 @@ chrome.runtime.onMessage.addListener((message, _s, sendResponse) => {
       .catch((e) => sendResponse({ ok: false, error: String(e) }));
     return true;
   }
+  if (message && message.type === "changeAdultProtection") {
+    void changeAdultProtection(message.action)
+      .then(sendResponse)
+      .catch((e) => sendResponse({ ok: false, error: String(e) }));
+    return true;
+  }
   return false;
 });
 
@@ -874,5 +968,6 @@ void (async () => {
   const current = await chrome.storage.local.get([K_FOCUS_SESSION, K_TEMP_ALLOWANCES]);
   await scheduleFocusAlarm(current[K_FOCUS_SESSION]);
   await clearExpiredAllowances();
+  await scheduleAdultDisableAlarm(await getAdultProtectionState());
   await enforceTabLimitFromStorage();
 })();

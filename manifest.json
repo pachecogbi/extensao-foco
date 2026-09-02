@@ -36,7 +36,9 @@
       "resources": [
         "ui/blocked/blocked.html",
         "ui/blocked/blocked.css",
-        "ui/blocked/blocked.js"
+        "ui/blocked/blocked.js",
+        "ui/theme.css",
+        "ui/theme.js"
       ],
       "matches": ["<all_urls>"]
     }

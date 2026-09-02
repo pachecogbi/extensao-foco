@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Foco — painel de atenção</title>
     <link rel="stylesheet" href="options.css" />
+    <link rel="stylesheet" href="../theme.css" />
   </head>
   <body>
     <div class="app-shell">
@@ -25,7 +26,7 @@
       <main class="main">
         <header class="topbar">
           <div><p class="eyebrow" id="dateLabel"></p><h1 id="viewTitle">Sua atenção, hoje</h1></div>
-          <div class="protection-pill"><span id="protectionDot"></span><strong id="protectionText">Proteção ativa</strong></div>
+          <div class="topbar-actions"><button class="theme-toggle" data-theme-toggle title="Usar tema escuro" aria-label="Usar tema escuro">☾</button><div class="protection-pill"><span id="protectionDot"></span><strong id="protectionText">Proteção ativa</strong></div></div>
         </header>
 
         <section class="view active" id="view-today">
@@ -107,6 +108,7 @@
         <p class="toast" id="toast" role="status" aria-live="polite"></p>
       </main>
     </div>
+    <script src="../theme.js"></script>
     <script src="../../lib/foco-core.js"></script>
     <script src="../../lib/foco-cooldown.js"></script>
     <script src="options.js"></script>

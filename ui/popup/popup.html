@@ -1,6 +1,6 @@
-<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Foco</title><link rel="stylesheet" href="popup.css"></head><body>
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Foco</title><link rel="stylesheet" href="popup.css"><link rel="stylesheet" href="../theme.css"></head><body>
   <main class="popup">
-    <header><div class="brand"><span>F</span><div><strong>Foco</strong><small id="statusLabel">Pronto para começar</small></div></div><button id="openDashboard" class="icon" title="Abrir painel" aria-label="Abrir painel">↗</button></header>
+    <header><div class="brand"><span>F</span><div><strong>Foco</strong><small id="statusLabel">Pronto para começar</small></div></div><div class="header-actions"><button class="icon" data-theme-toggle title="Usar tema escuro" aria-label="Usar tema escuro">☾</button><button id="openDashboard" class="icon" title="Abrir painel" aria-label="Abrir painel">↗</button></div></header>
     <section class="session idle" id="idleState">
       <p class="kicker">Próxima sessão</p><h1>Uma coisa de cada vez.</h1><form id="quickSession"><input id="intention" maxlength="140" required placeholder="No que você vai focar?"><div class="durations"><button type="button" data-min="15">15</button><button type="button" class="active" data-min="25">25</button><button type="button" data-min="50">50</button><label><input id="duration" type="number" min="5" max="180" value="25"><span>min</span></label></div><button class="primary" type="submit">Começar foco</button></form>
     </section>
@@ -9,5 +9,5 @@
     </section>
     <section class="today"><div><strong id="todayFocus">0 min</strong><span>foco hoje</span></div><div><strong id="todayBlocks">0</strong><span>impulsos evitados</span></div><div><strong id="goalPercent">0%</strong><span>da meta</span></div></section>
     <footer><span><i id="protectDot"></i><b id="protectText">Proteção ativa</b></span><button id="addCurrent">Bloquear site atual</button></footer><p id="message" role="status"></p>
-  </main><script src="../../lib/foco-core.js"></script><script src="popup.js"></script>
+  </main><script src="../theme.js"></script><script src="../../lib/foco-core.js"></script><script src="popup.js"></script>
 </body></html>
